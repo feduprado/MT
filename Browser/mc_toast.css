@@ -1,0 +1,253 @@
+:root {
+  --bg: #E4E2DF;
+  --text: #1F1F1F;
+  --pad-x: 56px; 
+  --color-goal: #111;
+  --color-goal-against: #D44B40;
+  
+  --enter-duration: 400ms;
+  --exit-duration: 300ms;
+  
+  --ease-elastic: cubic-bezier(0.175, 0.885, 0.32, 1.15); 
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+
+  --font: "Nunito", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 508px;  
+  height: 64px;  
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  font-family: var(--font);
+}
+
+ 
+@keyframes slideIn {
+  0% { transform: translateX(-120%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+  0% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(120%); opacity: 0; }
+}
+
+ 
+.toast {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 16px; 
+  
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+
+   
+  opacity: 0;
+  transform: translateX(-120%);
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;  
+  position: relative;
+}
+
+.toast.is-visible {
+  animation: slideIn var(--enter-duration) var(--ease-elastic) forwards;
+}
+
+.toast.is-exiting {
+  animation: slideOut var(--exit-duration) var(--ease-out) forwards;
+}
+
+ 
+.toast__inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center; 
+  padding: 0 var(--pad-x); 
+  gap: 16px;
+}
+
+ 
+.toast__icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+  display: inline-block;
+  position: relative;
+}
+
+ 
+.icon--ball {
+  border-radius: 50%;
+  border: 2px solid #111;
+  background: #F5F4F2;
+}
+.icon--ball::after {
+  content: ""; position: absolute; width: 6px; height: 6px;
+  border-radius: 1px; background: #111; top: 7px; left: 7px;
+}
+.icon--ball--against {
+  border-radius: 50%;
+  border: 2px solid var(--color-goal-against);
+  background: #F5F4F2;
+}
+.icon--ball--against::after {
+  content: ""; position: absolute; width: 6px; height: 6px;
+  border-radius: 1px; background: var(--color-goal-against); top: 7px; left: 7px;
+}
+ 
+.icon--ball.icon--annulled::before,
+.icon--ball.icon--annulled::after {
+  content: ""; position: absolute; width: 3px; height: 22px;
+  background: #D44B40; top: -1px; left: 8.5px; border-radius: 2px; z-index: 2;
+}
+.icon--ball.icon--annulled::before { transform: rotate(45deg); }
+.icon--ball.icon--annulled::after { transform: rotate(-45deg); }
+
+ 
+.icon--card {
+  width: 18px; height: 26px; border-radius: 3px;
+  background: #F3D03E; border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.icon--card.icon--red { background: #D44B40; }
+
+ 
+.toast__content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start; 
+  height: 100%;
+  min-width: 0;
+}
+
+.toast__title {
+  font-size: 20px; 
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--color-goal);
+  line-height: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.toast.is-card .toast__title {
+  font-size: 12px; font-weight: 800; color: #555; margin-bottom: 2px; letter-spacing: 0.05em;
+}
+
+.toast__line {
+  font-size: 24px; font-weight: 800; color: var(--color-goal);
+  line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+ 
+.toast__sub {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  padding: 0 var(--pad-x);  
+  
+  display: flex; 
+  align-items: center;
+   
+  justify-content: center; 
+  
+  gap: 32px;  
+  z-index: 10;
+  background: var(--bg);
+  border-radius: 16px;
+}
+
+.toast__subcol {
+   
+  display: flex;
+  align-items: center;
+   
+  justify-content: center; 
+  gap: 8px;  
+  min-width: 0;  
+  max-width: 50%;  
+}
+
+ 
+.toast__arrow {
+  display: flex; align-items: center; justify-content: center;
+  width: auto; height: auto; background: transparent; 
+  font-size: 20px; 
+  font-weight: 900; 
+  line-height: 1;
+  margin-top: -2px; 
+  flex-shrink: 0;
+}
+
+ 
+.toast__subcol:first-child .toast__arrow,
+.toast__subcol:first-child .toast__name {
+  color: #D44B40; 
+}
+
+.toast__subcol:last-child .toast__arrow,
+.toast__subcol:last-child .toast__name {
+  color: #111; 
+}
+
+.toast__name {
+  font-size: 22px; 
+  font-weight: 800; 
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1;
+  padding-top: 2px;
+}
+
+ 
+.toast.is-sub .toast__icon,
+.toast.is-sub .toast__title,
+.toast.is-sub .toast__line {
+  display: none !important;
+}
+
+.toast:not(.is-sub) .toast__sub {
+  display: none !important;
+}
+
+.toast.is-goal-annulled .toast__line + .toast__line,
+.toast.is-card .toast__line + .toast__line {
+  display: none;
+}
+
+.toast.is-goal .toast__line + .toast__line {
+  display: none;
+}
+
+.toast.is-goal-against .toast__title,
+.toast.is-goal-against .toast__line {
+  color: var(--color-goal-against);
+}
+
+.toast.is-goal-against .toast__line {
+  display: block;
+}
+
+.toast.is-goal-against .toast__line + .toast__line {
+  display: none;
+}
+
+.toast.is-empty {
+  opacity: 0;
+}
