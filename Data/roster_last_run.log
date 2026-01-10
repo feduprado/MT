@@ -1,9 +1,0 @@
-[INIT] Iniciando UpdateRoster.bat 
-[INIT] Data: 01/01/2026  6:26:03,21 
-[INFO] Usando executavel: pwsh.exe 
-[31;1mParserError: [0mTools\UpdateRoster.ps1:72[0m
-[31;1m[0m[36;1mLine |[0m
-[31;1m[0m[36;1m[36;1m  72 | [0m     Log-Report "VENCEDOR para [36;1m$Label:[0m '$winnerInfo' ($maxCount arquiv .[0m
-[31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m     | [31;1m                               ~~~~~~~[0m
-[31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m[31;1m[31;1m[36;1m     | [31;1mVariable reference is not valid. ':' was not followed by a valid variable name character. Consider using ${} to[0m
-[31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m[31;1m[31;1m[36;1m[31;1m[36;1m     | [31;1mdelimit the name.[0m
