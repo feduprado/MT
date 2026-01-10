@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tático</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+
+  <link rel="stylesheet" href="./dock.css" />
+  
+  <style>
+  #goalModal .modalBody {
+    max-height: 70vh;
+    padding: 16px;
+  }
+
+  #goalList {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 4px;
+    margin-top: 12px;
+  }
+
+  #goalList .goal-card-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    transition: all 0.2s ease;
+    min-height: 60px;
+  }
+
+  #goalList .goal-card-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+  }
+
+  .goal-player-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ececec;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+
+  .goal-player-meta {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #999;
+  }
+
+.goal-count-badge {
+    background: #333;
+    color: #fff;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 10px;
+    border: 1px solid #555;
+  }
+  
+</style>
+</head>
+
+<body>
+  <div class="appShell">
+    <header class="headerRow">
+      <div class="brand">
+        <img class="logoType" src="../Assets/Brand/Salve Drew Type.png" alt="Salve Drew" />
+      </div>
+
+      <div class="sceneSelectWrap">
+        <select id="sceneSelect" aria-label="Cena atual" title="Mudar Cena"></select>
+      </div>
+
+      <div class="statusGroup">
+        <span id="pillWs" class="pill pill--off" title="Status da Conexão">WS</span>
+      </div>
+      
+      <div style="display:none">
+        <span id="pillScene"></span>
+        <span id="pillSlot"></span>
+      </div>
+    </header>
+
+    <main class="mainContent">
+      <div id="mainPanelsWrap" data-panel="main-wrap">
+      
+      <section class="card card--watermark">
+        <div class="cardHeader">
+          <div class="cardTitle">Slots / Utilitários</div>
+          <div id="actionsHint" class="cardHint">
+            <span class="hintText">Selecione um Slot_XX para liberar ações.</span>
+            <span class="hintIcon" title="Selecione Slot_XX no preview ou no seletor.">i</span>
+          </div>
+        </div>
+
+        <div class="controlGrid">
+          <label class="field">
+            <span class="fieldLabel">Alvo</span>
+            <div class="toggleGroup" role="tablist" aria-label="Alvo">
+              <button type="button" class="btn toggleBtn is-active" data-value="field">CAMPO</button>
+              <button type="button" class="btn toggleBtn" data-value="mc">MATCH CENTER</button>
+            </div>
+            <select id="targetSelect" class="isHidden" aria-hidden="true" aria-label="Alvo">
+              <option value="field">Campo</option>
+              <option value="mc">Match Center</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="fieldLabel">Conexão</span>
+            <button id="btnReconnect" class="btn">Reconectar</button>
+          </label>
+
+          <label class="field" style="grid-column: 1 / -1;">
+            <span class="fieldLabel">JOGADOR SELECIONADO</span>
+            <button id="btnPlayerSelect" class="btn btn--large-select">
+              <span id="playerSelectLabel">
+                <div style="display:flex; flex-direction:column; align-items:flex-start; line-height:1.2;">
+                    <span style="font-size:10px; opacity:0.7;">INICIANDO...</span>
+                    <span>Selecione...</span>
+                </div>
+              </span>
+              <span class="material-symbols-outlined">expand_more</span>
+            </button>
+          </label>
+        </div>
+
+        <div class="subActionGrid">
+          <button id="btnRegisterReserves" class="btn"><span class="material-symbols-outlined">playlist_add</span><span class="btnLabel">Cadastrar reservas</span></button>
+          <button id="btnSubstitute" class="btn btn--primary" disabled><span class="material-symbols-outlined">swap_calls</span><span class="btnLabel">Substituir ⇄</span></button>
+          <button id="btnClearSwaps" class="btn"><span class="material-symbols-outlined">layers_clear</span><span class="btnLabel">Limpar ⇄</span></button>
+        </div>
+		
+		<div id="substitutePanel" class="subPanel isHidden">
+  <div class="sub-header">
+    <span>REALIZAR SUBSTITUIÇÃO</span>
+    <button id="btnCloseSubPanel" class="btn-icon-tiny"><span class="material-symbols-outlined">close</span></button>
+  </div>
+  
+  <div class="sub-stage">
+    <div class="sub-card-container">
+      <div class="sub-label-out">SAI (TITULAR)</div>
+      <select id="subOutSelect" class="sub-select"></select>
+      <div id="subOutPreview" class="sub-player-card card-out">
+        <div class="sub-avatar"></div>
+        <div class="sub-info">
+          <strong class="sub-name">Selecionar...</strong>
+          <small class="sub-meta">Slot Atual</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-arrow">
+      <span class="material-symbols-outlined">arrow_forward</span>
+    </div>
+
+    <div class="sub-card-container">
+      <div class="sub-label-in">ENTRA (RESERVA)</div>
+      <select id="subInSelect" class="sub-select"></select>
+      <div id="subInPreview" class="sub-player-card card-in">
+        <div class="sub-avatar"></div>
+        <div class="sub-info">
+          <strong class="sub-name">Selecionar...</strong>
+          <small class="sub-meta">Banco de Reservas</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sub-actions">
+    <button id="btnConfirmSub" class="btn btn--primary full-width">
+      CONFIRMAR TROCA
+    </button>
+  </div>
+</div>
+
+        <div class="rowAction">
+          <button id="btnManagePlayers" class="btn btn--ghost"><span class="material-symbols-outlined">group</span><span class="btnLabel">Gerenciar jogadores</span></button>
+        </div>
+
+        <div class="sectionDivider"></div>
+
+        <div class="utilGrid">
+          <button id="btnSync" class="btn"><span class="material-symbols-outlined">sync</span><span class="btnLabel">Sincronizar Transform</span></button>
+          <button id="btnClearAll" class="btn btn--red"><span class="material-symbols-outlined">delete_sweep</span><span class="btnLabel">Limpar todos os cartões</span></button>
+          <button id="btnGenerateIndex" class="btn"><span class="material-symbols-outlined">tag</span><span class="btnLabel">Reindexar IDs</span></button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="cardHeader">
+          <div class="cardTitle">Ações do Slot</div>
+        </div>
+
+        <div class="actionsGrid">
+          <button id="btnYellow" class="btn btn--yellow" disabled><span class="material-symbols-outlined">warning</span><span class="btnLabel">Adicionar amarelo</span></button>
+          <button id="btnRed" class="btn btn--red" disabled><span class="material-symbols-outlined">report</span><span class="btnLabel">Adicionar vermelho</span></button>
+          <button id="btnRemoveCard" class="btn" disabled><span class="material-symbols-outlined">remove_circle</span><span class="btnLabel">Remover cartão</span></button>
+          <button id="btnSwap" class="btn" disabled><span class="material-symbols-outlined">swap_horiz</span><span class="btnLabel">Trocar jogador</span></button>
+        </div>
+      </section>
+
+      <section id="mcScoreboardPanel" class="card mc-panel">
+        <div class="mc-header-title">MC PLACAR</div>
+
+        <div class="mc-adv-row">
+          <div class="mc-adv-info">
+            <span class="mc-label-xs">ADV:</span>
+            <span id="opponentSelected" class="mc-adv-name" title="Nenhum selecionado">NENHUM</span>
+          </div>
+          <div class="mc-adv-actions">
+            <button id="btnRefreshTeams" class="mc-btn-icon" title="Atualizar Lista"><span class="material-symbols-outlined">refresh</span></button>
+            <button id="btnAddOpponent" class="mc-btn-round-small" title="Buscar Adversário"><span class="material-symbols-outlined">search</span></button>
+          </div>
+        </div>
+
+        <div class="mc-scoreboard">
+          <div class="mc-score-header">
+            <div class="mc-team-col">
+              <span class="mc-team-name">CORINTHIANS</span>
+              <div class="mc-mando-toggles">
+                <button id="btnCorMandante" class="mc-tag" title="Definir como Mandante">CASA</button>
+                <button id="btnCorVisitante" class="mc-tag" title="Definir como Visitante">FORA</button>
+              </div>
+            </div>
+
+            <span class="mc-vs-icon material-symbols-outlined">close</span>
+
+            <div class="mc-team-col">
+              <span class="mc-team-name">ADVERSÁRIO</span>
+              <button id="btnGolReset" class="mc-btn-reset-score" title="Zerar Placar"><span class="material-symbols-outlined">restart_alt</span></button>
+            </div>
+          </div>
+
+          <div class="mc-score-controls">
+            <div class="mc-score-group">
+              <button id="btnGolLeftMinus" class="mc-btn-round">-</button>
+              <span id="uiScoreLeft" class="mc-score-display">0</span>
+              <button id="btnGolLeftPlus" class="mc-btn-round">+</button>
+            </div>
+
+            <div class="mc-score-group">
+              <button id="btnGolRightMinus" class="mc-btn-round">-</button>
+              <span id="uiScoreRight" class="mc-score-display">0</span>
+              <button id="btnGolRightPlus" class="mc-btn-round">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mc-timer-wrap">
+          <div class="mc-label-xs">CRONÔMETRO</div>
+          
+          <div class="mc-timer-grid">
+            <div class="mc-timer-display-box">
+              <span id="timerPreview">00:00</span>
+            </div>
+            
+            <div class="mc-timer-set-box">
+              <input id="timerSetInput" type="text" placeholder="mm:ss" class="mc-input-dark">
+              <button id="btnTimerStartFrom" class="mc-btn-set">SET</button>
+            </div>
+          </div>
+
+          <div class="mc-timer-actions">
+            <button id="btnTimerStart" class="mc-btn-primary" title="Iniciar">
+              <span class="material-symbols-outlined">play_arrow</span>
+            </button>
+            
+            <button id="btnTimerResume" class="mc-btn-secondary" title="Retomar">Resume</button>
+            <button id="btnTimerPause" class="mc-btn-secondary" title="Pausar">Pause</button>
+            
+            <button id="btnTimerReset" class="mc-btn-icon-only" title="Resetar">
+              <span class="material-symbols-outlined">refresh</span>
+            </button>
+            
+            <button id="btnToggleStoppage" class="mc-btn-icon-only" title="Acréscimos (Liberado aos 45/15 min)" disabled>
+              <span class="material-symbols-outlined">more_time</span>
+            </button>
+          </div>
+        </div>
+
+
+        <div class="mc-status-bar">
+          <button id="btnStatus1T" class="mc-btn-status">1T</button>
+          <button id="btnStatus2T" class="mc-btn-status">2T</button>
+          <button id="btnStatusIntervalo" class="mc-btn-status">INT</button>
+          <button id="btnStatusProrrogacao" class="mc-btn-status">PRO</button>
+          <button id="btnStatusPenalti" class="mc-btn-status">PEN</button>
+        </div>
+
+        <div class="mc-agg-wrap">
+          <div class="mc-agg-header">
+            <button id="btnToggleAgg" class="mc-btn-toggle-agg">
+              <span class="material-symbols-outlined">calculate</span>
+              AGREGADO: OFF
+            </button>
+          </div>
+          
+          <div id="aggControls" class="mc-agg-controls isHidden">
+             <div class="mc-agg-side">
+               <button id="btnAggLeftMinus" class="mc-btn-mini">-</button>
+               <div class="mc-agg-display">
+                 <span class="mc-label-xxs">IDA</span>
+                 <span id="uiAggLeft">0</span>
+               </div>
+               <button id="btnAggLeftPlus" class="mc-btn-mini">+</button>
+             </div>
+
+             <div class="mc-agg-total">
+               <span class="mc-label-xxs">TOTAL</span>
+               <span id="uiAggTotalDisplay">(0) - (0)</span>
+             </div>
+
+             <div class="mc-agg-side">
+               <button id="btnAggRightMinus" class="mc-btn-mini">-</button>
+               <div class="mc-agg-display">
+                 <span class="mc-label-xxs">IDA</span>
+                 <span id="uiAggRight">0</span>
+               </div>
+               <button id="btnAggRightPlus" class="mc-btn-mini">+</button>
+             </div>
+          </div>
+        </div>
+
+        <div id="mcPenaltiesPanel" class="mc-penalties isHidden">
+          <div class="mc-penalties-header">
+            <span class="mc-label-xs">PÊNALTIS</span>
+            <div class="mc-pen-actions">
+                <button id="btnPenaltyAdd" class="mc-btn-round-small" title="Adicionar Cobrança Alternada">+</button>
+                <button id="btnPenaltyReset" class="mc-btn-pill mc-btn-pill--danger" type="button">Reset</button>
+            </div>
+          </div>
+
+          <div class="mc-penalties-grid">
+            <div class="mc-penalties-team">
+              <span id="pTagLeft" class="mc-penalties-tag">CASA</span>
+              <div id="pListLeft" class="mc-penalties-shots"></div>
+            </div>
+
+            <div class="mc-penalties-team">
+              <span id="pTagRight" class="mc-penalties-tag">FORA</span>
+              <div id="pListRight" class="mc-penalties-shots"></div>
+            </div>
+          </div>
+        </div>
+
+      </section> 
+
+      </div>
+      
+<section class="card" id="guestPanel" data-panel="guest">
+        <div class="cardHeader">
+          <div class="cardTitle">Tela de Convidado</div>
+          <div class="cardHint">
+            <span class="hintText">Lower third automático (Browser Source).</span>
+            <span id="guestStatusText" class="hintText" aria-live="polite"></span>
+          </div>
+        </div>
+
+        <div style="margin-top: 8px;">
+          <input id="guestNameInput" type="text" placeholder="Digite o nome do convidado..." />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: var(--gap);">
+          <button id="btnGuestApply" class="btn btn--primary">
+            <span class="material-symbols-outlined">check</span>
+            <span class="btnLabel">Aplicar</span>
+          </button>
+          
+          <button id="btnGuestToggle" class="btn">
+            <span class="material-symbols-outlined">visibility</span>
+            <span class="btnLabel">Mostrar</span>
+          </button>
+          
+          <button id="btnGuestClear" class="btn btn--red" style="padding: 0; width: 44px;" title="Limpar">
+            <span class="material-symbols-outlined">delete</span>
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+  
+  <div id="cardModal" class="modalMask" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal small-modal" role="document">
+    <div class="modalHead">
+      <div class="modalTitle" id="cardModalTitle">Aplicar Cartão</div>
+      <button id="btnCardClose" class="btn">Fechar</button>
+    </div>
+    <div class="modalBody">
+      <div id="cardPlayerList" class="rosterList"></div>
+    </div>
+  </div>
+</div>
+
+  <div id="modalMask" class="modalMask" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <div class="modalHead">
+        <div class="modalTitle">Trocar jogador</div>
+        <div class="modalRight">
+          <button id="btnOpenObsProps" class="btn">Abrir no OBS</button>
+          <button id="btnModalClose" class="btn">Fechar</button>
+        </div>
+      </div>
+
+      <div class="modalBody">
+        <input id="rosterSearch" type="text" placeholder="Buscar (ex: Memphis)" />
+        <div id="rosterList" class="rosterList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="reservesModal" class="modalMask" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <div class="modalHead">
+        <div class="modalTitle">Cadastrar reservas</div>
+        <div class="modalRight">
+          <span id="reserveCount" class="miniTag">0/12</span>
+          <button id="btnReserveConfirm" class="btn btn--primary" disabled>Confirmar</button>
+          <button id="btnReserveClose" class="btn">Fechar</button>
+        </div>
+      </div>
+
+      <div class="modalBody">
+        <input id="reserveSearch" type="text" placeholder="Buscar (ex: Memphis)" />
+        <div id="reserveList" class="rosterList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="substituteModal" class="modalMask" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <div class="modalHead">
+        <div class="modalTitle">Substituir jogador</div>
+        <div class="modalRight">
+          <button id="btnSubstituteConfirm" class="btn btn--primary" disabled>Confirmar</button>
+          <button id="btnSubstituteClose" class="btn">Fechar</button>
+        </div>
+      </div>
+
+      <div class="modalBody">
+        <input id="substituteSearch" type="text" placeholder="Buscar reserva (ex: Memphis)" />
+        <div id="substituteList" class="rosterList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="playersModal" class="modalMask playersModal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <div class="modalHead">
+        <div class="modalTitle">Gerenciar jogadores</div>
+        <div class="modalRight">
+          <button id="btnPlayersClose" class="btn">Fechar</button>
+        </div>
+      </div>
+
+      <div class="modalBody playersBody">
+        <div class="playersTop">
+          <input id="playerSearch" type="text" placeholder="Buscar (nome/time/posição)" />
+          <div class="playersTools">
+            <button id="btnRefreshRoster" class="btn">Atualizar</button>
+            <button id="btnScanFolder" class="btn">Scanear pasta</button>
+          </div>
+          <div id="scanStatus" class="scanStatus" style="display:none"></div>
+          <progress id="scanProgress" class="scanProgress" value="0" max="100" style="display:none"></progress>
+        </div>
+
+        <div class="playersListWrap">
+          <div id="playersList" class="playersList"></div>
+        </div>
+
+        <aside class="playersSide">
+          <div id="selectedPlayerInfo" class="selectedPlayerInfo">
+            <p>Selecione um jogador para ver detalhes</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div id="goalModal" class="modalMask goalModal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <div class="modalHead">
+        <div class="modalTitle">Registrar gol</div>
+        <div class="modalRight">
+          <button id="btnGoalOwnGoal" class="btn btn--ghost">Gol contra</button>
+          <button id="btnGoalClose" class="btn">Fechar</button>
+        </div>
+      </div>
+
+      <div class="modalBody">
+        <input id="goalSearch" type="text" placeholder="Buscar (ex: Memphis)" />
+        <div id="goalList" class="rosterList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="opponentModalMask" class="modalMask" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <div class="modalHead">
+        <div class="modalTitle">Selecionar adversário</div>
+        <div class="modalRight">
+          <button id="btnOpponentRefreshTimes" class="btn">Atualizar times</button>
+          <button id="btnOpponentClose" class="btn">Fechar</button>
+        </div>
+      </div>
+
+      <div class="modalBody">
+        <input id="teamSearch" type="text" placeholder="Buscar (nome ou sigla)" />
+        <div id="teamGrid" class="teamGrid teamGrid--modal"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="slotSelectionModal" class="modalMask" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal small-modal" role="document">
+      <div class="modalHead">
+        <div class="modalTitle">Selecionar Jogador</div>
+        <button id="btnSlotSelectionClose" class="btn">Fechar</button>
+      </div>
+      <div class="modalBody">
+        <div id="slotSelectionList" class="rosterList"></div>
+      </div>
+    </div>
+  </div>
+
+<div id="stoppageModal" class="modalMask" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal small-modal" role="document">
+    <div class="modalHead">
+      <div class="modalTitle">Definir Acréscimos</div>
+      <button id="btnStoppageClose" class="btn">Fechar</button>
+    </div>
+    <div class="modalBody">
+      <div class="stoppage-info">
+        Tempo regulamentar atingido. O cronômetro continua rodando.
+      </div>
+      <div class="stoppage-grid">
+        <button class="btn-stop" data-val="1">+1</button>
+        <button class="btn-stop" data-val="2">+2</button>
+        <button class="btn-stop" data-val="3">+3</button>
+        <button class="btn-stop" data-val="4">+4</button>
+        <button class="btn-stop" data-val="5">+5</button>
+        <button class="btn-stop" data-val="6">+6</button>
+        <button class="btn-stop" data-val="7">+7</button>
+        <button class="btn-stop" data-val="8">+8</button>
+        <button class="btn-stop" data-val="9">+9</button>
+        <button class="btn-stop" data-val="10">+10</button>
+        <button class="btn-stop" data-val="0">0</button>
+      </div>
+      <div class="stoppage-manual">
+        <input id="stoppageInput" type="number" placeholder="Outro (min)" class="mc-input-dark">
+        <button id="btnStoppageApply" class="btn btn--primary">Aplicar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <script>
+  (function () {
+    function load(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(src);
+        document.head.appendChild(s);
+      });
+    }
+
+    (async () => {
+      try {
+        const v = Date.now();
+        await load(`../Data/config.js?v=${v}`);
+        await load(`./roster.data.js?v=${v}`);
+        await load(`./teams.data.js?v=${v}`);
+        await load(`./app.js?v=${v}`);
+
+        const btnAdd = document.getElementById("btnAddOpponent");
+        const mask = document.getElementById("opponentModalMask");
+        if (btnAdd && mask) {
+          btnAdd.addEventListener("click", () => {
+            mask.setAttribute("aria-hidden", "false");
+            mask.style.display = "flex";
+             setTimeout(() => {
+                const input = document.getElementById("teamSearch");
+                if(input) input.focus();
+             }, 50);
+          });
+        }
+      } catch (e) {
+        document.body.innerHTML =
+          "<pre style='color:white;background:black;padding:12px'>" +
+          "ERRO AO CARREGAR SCRIPT: " + e +
+          "</pre>";
+      }
+    })();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,502 @@
+{
+  "generatedAt": "2026-01-07T07:06:22",
+  "players": [
+    {
+      "name": "André Carrillo",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/André Carrillo.png",
+      "searchKey": "andre carrillo   titular"
+    },
+    {
+      "name": "André Ramalho",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/André Ramalho.png",
+      "searchKey": "andre ramalho   titular"
+    },
+    {
+      "name": "Breno Bidon",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Breno Bidon.png",
+      "searchKey": "breno bidon   titular"
+    },
+    {
+      "name": "Cacá",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Cacá.png",
+      "searchKey": "caca   titular"
+    },
+    {
+      "name": "Charles",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Charles.png",
+      "searchKey": "charles   titular"
+    },
+    {
+      "name": "Fabrizio Angileri",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Fabrizio Angileri.png",
+      "searchKey": "fabrizio angileri   titular"
+    },
+    {
+      "name": "Felipe Longo",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Felipe Longo.png",
+      "searchKey": "felipe longo   titular"
+    },
+    {
+      "name": "Félix Torres",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Félix Torres.png",
+      "searchKey": "felix torres   titular"
+    },
+    {
+      "name": "Gustavo Henrique",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Gustavo Henrique.png",
+      "searchKey": "gustavo henrique   titular"
+    },
+    {
+      "name": "Héctor Hernández",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Héctor Hernández.png",
+      "searchKey": "hector hernandez   titular"
+    },
+    {
+      "name": "Hugo Souza",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Hugo Souza.png",
+      "searchKey": "hugo souza   titular"
+    },
+    {
+      "name": "Hugo",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Hugo.png",
+      "searchKey": "hugo   titular"
+    },
+    {
+      "name": "João Pedro",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/João Pedro.png",
+      "searchKey": "joao pedro   titular"
+    },
+    {
+      "name": "José Martínez",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/José Martínez.png",
+      "searchKey": "jose martinez   titular"
+    },
+    {
+      "name": "Kayke",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Kayke.png",
+      "searchKey": "kayke   titular"
+    },
+    {
+      "name": "Matheus Bidu",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Matheus Bidu.png",
+      "searchKey": "matheus bidu   titular"
+    },
+    {
+      "name": "Matheus Donelli",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Matheus Donelli.png",
+      "searchKey": "matheus donelli   titular"
+    },
+    {
+      "name": "Matheuzinho",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Matheuzinho.png",
+      "searchKey": "matheuzinho   titular"
+    },
+    {
+      "name": "Maycon",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Maycon.png",
+      "searchKey": "maycon   titular"
+    },
+    {
+      "name": "Memphis",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Memphis.png",
+      "searchKey": "memphis   titular"
+    },
+    {
+      "name": "Raniele",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Raniele.png",
+      "searchKey": "raniele   titular"
+    },
+    {
+      "name": "Rodrigo Garro",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Rodrigo Garro.png",
+      "searchKey": "rodrigo garro   titular"
+    },
+    {
+      "name": "Romero",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Romero.png",
+      "searchKey": "romero   titular"
+    },
+    {
+      "name": "Ryan",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Ryan.png",
+      "searchKey": "ryan   titular"
+    },
+    {
+      "name": "Talles Magno",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Talles Magno.png",
+      "searchKey": "talles magno   titular"
+    },
+    {
+      "name": "Vitinho",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Vitinho.png",
+      "searchKey": "vitinho   titular"
+    },
+    {
+      "name": "Yuri Alberto - Copia",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Yuri Alberto - Copia.png",
+      "searchKey": "yuri alberto - copia   titular"
+    },
+    {
+      "name": "Yuri Alberto",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": false,
+      "file": "Assets/Players/Yuri Alberto.png",
+      "searchKey": "yuri alberto   titular"
+    }
+  ],
+  "reserves": [
+    {
+      "name": "André Carrillo",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/André Carrillo_res.png",
+      "searchKey": "andre carrillo   reserva"
+    },
+    {
+      "name": "André Ramalho",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/André Ramalho_res.png",
+      "searchKey": "andre ramalho   reserva"
+    },
+    {
+      "name": "Breno Bidon",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Breno Bidon_res.png",
+      "searchKey": "breno bidon   reserva"
+    },
+    {
+      "name": "Cacá",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Cacá_res.png",
+      "searchKey": "caca   reserva"
+    },
+    {
+      "name": "Charles",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Charles_res.png",
+      "searchKey": "charles   reserva"
+    },
+    {
+      "name": "Fabrizio Angileri",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Fabrizio Angileri_res.png",
+      "searchKey": "fabrizio angileri   reserva"
+    },
+    {
+      "name": "Felipe Longo",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Felipe Longo_res.png",
+      "searchKey": "felipe longo   reserva"
+    },
+    {
+      "name": "Félix Torres",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Félix Torres_res.png",
+      "searchKey": "felix torres   reserva"
+    },
+    {
+      "name": "Gustavo Henrique",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Gustavo Henrique_res.png",
+      "searchKey": "gustavo henrique   reserva"
+    },
+    {
+      "name": "Héctor Hernández",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Héctor Hernández_res.png",
+      "searchKey": "hector hernandez   reserva"
+    },
+    {
+      "name": "Hugo Souza",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Hugo Souza_res.png",
+      "searchKey": "hugo souza   reserva"
+    },
+    {
+      "name": "Hugo",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Hugo_res.png",
+      "searchKey": "hugo   reserva"
+    },
+    {
+      "name": "João Pedro",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/João Pedro_res.png",
+      "searchKey": "joao pedro   reserva"
+    },
+    {
+      "name": "José Martínez",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/José Martínez_res.png",
+      "searchKey": "jose martinez   reserva"
+    },
+    {
+      "name": "Kayke",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Kayke_res.png",
+      "searchKey": "kayke   reserva"
+    },
+    {
+      "name": "Matheus Bidu",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Matheus Bidu_res.png",
+      "searchKey": "matheus bidu   reserva"
+    },
+    {
+      "name": "Matheus Donelli",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Matheus Donelli_res.png",
+      "searchKey": "matheus donelli   reserva"
+    },
+    {
+      "name": "Matheuzinho",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Matheuzinho_res.png",
+      "searchKey": "matheuzinho   reserva"
+    },
+    {
+      "name": "Maycon",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Maycon_res.png",
+      "searchKey": "maycon   reserva"
+    },
+    {
+      "name": "Memphis",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Memphis_res.png",
+      "searchKey": "memphis   reserva"
+    },
+    {
+      "name": "Raniele",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Raniele_res.png",
+      "searchKey": "raniele   reserva"
+    },
+    {
+      "name": "Rodrigo Garro",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Rodrigo Garro_res.png",
+      "searchKey": "rodrigo garro   reserva"
+    },
+    {
+      "name": "Romero",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Romero_res.png",
+      "searchKey": "romero   reserva"
+    },
+    {
+      "name": "Ryan",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Ryan_res.png",
+      "searchKey": "ryan   reserva"
+    },
+    {
+      "name": "Talles Magno",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Talles Magno_res.png",
+      "searchKey": "talles magno   reserva"
+    },
+    {
+      "name": "Vitinho",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Vitinho_res.png",
+      "searchKey": "vitinho   reserva"
+    },
+    {
+      "name": "Yuri Alberto",
+      "number": null,
+      "pos": null,
+      "posLabel": null,
+      "isReserve": true,
+      "file": "Assets/Reservas/Yuri Alberto_res.png",
+      "searchKey": "yuri alberto   reserva"
+    }
+  ]
+}
