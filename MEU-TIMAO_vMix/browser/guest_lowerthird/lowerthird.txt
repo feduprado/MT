@@ -1,5 +1,0 @@
-Pasta: MEU-TIMAO_vMix\browser\guest_lowerthird
-Data: 10/01/2026  7:50:53,87
-
-Esta pasta faz parte do projeto MEU-TIMÃO_vMix.
-Adicione aqui os arquivos especificos deste modulo.
