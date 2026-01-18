@@ -274,6 +274,12 @@ export function renderAll(state) {
   if (dom.awayCoach) {
     dom.awayCoach.value = state.teams.away.coach || '';
   }
+  if (dom.sceneSelect && state.meta?.sceneName) {
+    dom.sceneSelect.value = state.meta.sceneName;
+  }
+  if (dom.skinSelect && state.meta?.skin) {
+    dom.skinSelect.value = state.meta.skin;
+  }
 
   const fallbackLogo =
     'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" fill="%232a2f3a"/><circle cx="40" cy="40" r="26" fill="%23171a22" stroke="%2397a1b0" stroke-width="3"/></svg>';
@@ -485,6 +491,11 @@ export function renderHistory(state) {
 
 export function setBusy(isBusy) {
   document.body.classList.toggle('is-busy', Boolean(isBusy));
+  const dom = cacheDom();
+  const bulkControls = [dom.btnSyncObs, dom.sceneSelect, dom.skinSelect].filter(Boolean);
+  bulkControls.forEach((control) => {
+    control.disabled = Boolean(isBusy);
+  });
 }
 
 export function setWsStatusPill({ text, icon, tone }) {
@@ -568,6 +579,12 @@ export function bindMainActions(handlers = {}) {
   }
   if (dom.btnTimerSetConfirm && handlers.onTimerSetConfirm) {
     dom.btnTimerSetConfirm.addEventListener('click', handlers.onTimerSetConfirm);
+  }
+  if (dom.sceneSelect && handlers.onSceneChange) {
+    dom.sceneSelect.addEventListener('change', handlers.onSceneChange);
+  }
+  if (dom.skinSelect && handlers.onSkinChange) {
+    dom.skinSelect.addEventListener('change', handlers.onSkinChange);
   }
   if (dom.modalMask && handlers.onModalMaskClick) {
     dom.modalMask.addEventListener('click', handlers.onModalMaskClick);
