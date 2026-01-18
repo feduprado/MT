@@ -9,6 +9,9 @@ const OPS = {
 };
 
 const BACKOFF_STEPS = [1000, 2000, 5000, 10000, 30000];
+const MAX_LOG_ENTRIES = 300;
+const DEFAULT_MAX_QUEUE = 120;
+const DEFAULT_MAX_IN_FLIGHT = 10;
 
 function getJitter() {
   return Math.floor(Math.random() * 251);
@@ -25,23 +28,34 @@ function toBase64(buffer) {
 
 export class ObsWsClient {
   constructor({ url = DEFAULT_URL, password = '', onStateChange, onLog } = {}) {
-    this.url = url;
-    this.password = password;
+    this.url = url || DEFAULT_URL;
+    this.password = password || '';
     this.onStateChange = onStateChange;
     this.onLog = onLog;
     this.state = 'DISCONNECTED';
     this.socket = null;
     this.listeners = new Map();
     this.pendingRequests = new Map();
+    this.requestQueue = [];
+    this.requestCounter = 1;
     this.retryIndex = 0;
     this.reconnectTimer = null;
     this.intentionalClose = false;
     this.suppressReconnect = false;
+    this.eventSubscriptions = 2047;
+    this.maxQueue = DEFAULT_MAX_QUEUE;
+    this.maxInFlight = DEFAULT_MAX_IN_FLIGHT;
+    this.logBuffer = [];
+  }
+
+  setUrl(url) {
+    const nextUrl = (url || DEFAULT_URL).trim() || DEFAULT_URL;
+    this.url = nextUrl;
   }
 
   setPassword(password) {
     this.password = password || '';
-    if (this.state === 'DEGRADED_AUTH_REQUIRED') {
+    if (this.state === 'DEGRADED_AUTH_REQUIRED' || this.state === 'AUTH_FAILED') {
       this.suppressReconnect = false;
     }
   }
@@ -60,6 +74,9 @@ export class ObsWsClient {
     this.transition('CONNECTING');
     this.log('INFO', 'ws connecting', { url: this.url });
     this.socket = new WebSocket(this.url);
+    this.socket.addEventListener('open', () => {
+      this.log('INFO', 'ws open');
+    });
     this.socket.addEventListener('message', (event) => {
       this.handleMessage(event);
     });
@@ -76,6 +93,7 @@ export class ObsWsClient {
     this.suppressReconnect = true;
     this.clearReconnectTimer();
     this.rejectAllPending(new Error('disconnected'));
+    this.clearQueue(new Error('disconnected'));
     if (this.socket) {
       this.socket.close(1000, 'disconnect');
       this.socket = null;
@@ -87,23 +105,14 @@ export class ObsWsClient {
     if (this.state !== 'IDENTIFIED') {
       return Promise.reject(new Error('not identified'));
     }
-    const requestId = crypto.randomUUID();
-    const payload = {
-      op: OPS.REQUEST,
-      d: {
-        requestType,
-        requestId,
-        requestData
-      }
-    };
-    const message = JSON.stringify(payload);
-    this.socket.send(message);
+    const totalPending = this.pendingRequests.size + this.requestQueue.length;
+    if (totalPending >= this.maxQueue) {
+      this.log('WARN', 'request queue full', { requestType, size: totalPending });
+      return Promise.reject(new Error('request queue full'));
+    }
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.pendingRequests.delete(requestId);
-        reject(new Error(`timeout ${requestType}`));
-      }, timeoutMs);
-      this.pendingRequests.set(requestId, { resolve, reject, timeout });
+      this.requestQueue.push({ requestType, requestData, timeoutMs, resolve, reject });
+      this.processQueue();
     });
   }
 
@@ -121,14 +130,6 @@ export class ObsWsClient {
     this.listeners.get(eventName).delete(handler);
   }
 
-  emit(eventName, payload) {
-    const handlers = this.listeners.get(eventName);
-    if (!handlers) {
-      return;
-    }
-    handlers.forEach((handler) => handler(payload));
-  }
-
   transition(state, detail) {
     this.state = state;
     if (this.onStateChange) {
@@ -137,6 +138,16 @@ export class ObsWsClient {
   }
 
   log(level, message, meta) {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      meta: meta || null
+    };
+    this.logBuffer.push(entry);
+    if (this.logBuffer.length > MAX_LOG_ENTRIES) {
+      this.logBuffer.splice(0, this.logBuffer.length - MAX_LOG_ENTRIES);
+    }
     if (this.onLog) {
       this.onLog(level, message, meta);
     }
@@ -155,14 +166,10 @@ export class ObsWsClient {
         void this.handleHello(payload.d);
         break;
       case OPS.IDENTIFIED:
-        this.retryIndex = 0;
-        this.transition('IDENTIFIED');
-        this.log('INFO', 'identified');
+        this.handleIdentified();
         break;
       case OPS.EVENT:
-        if (payload.d?.eventType) {
-          this.emit(payload.d.eventType, payload.d);
-        }
+        this.handleEvent(payload.d);
         break;
       case OPS.RESPONSE:
         this.handleResponse(payload.d);
@@ -174,8 +181,8 @@ export class ObsWsClient {
 
   async handleHello(data) {
     this.transition('HELLO');
-    this.log('INFO', 'hello received');
     const auth = data?.authentication;
+    this.log('INFO', 'hello received', { authRequired: Boolean(auth) });
     if (auth && !this.password) {
       this.transition('DEGRADED_AUTH_REQUIRED');
       this.log('WARN', 'auth required');
@@ -185,11 +192,18 @@ export class ObsWsClient {
       }
       return;
     }
-    let authentication = undefined;
+    let authentication;
     if (auth && this.password) {
       authentication = await this.createAuthentication(this.password, auth.salt, auth.challenge);
     }
     this.sendIdentify(authentication);
+  }
+
+  handleIdentified() {
+    this.retryIndex = 0;
+    this.transition('IDENTIFIED');
+    this.log('INFO', 'identified');
+    this.processQueue();
   }
 
   sendIdentify(authentication) {
@@ -199,7 +213,8 @@ export class ObsWsClient {
     const identifyPayload = {
       op: OPS.IDENTIFY,
       d: {
-        rpcVersion: 1
+        rpcVersion: 1,
+        eventSubscriptions: this.eventSubscriptions
       }
     };
     if (authentication) {
@@ -218,6 +233,27 @@ export class ObsWsClient {
     return toBase64(authHash);
   }
 
+  handleEvent(data) {
+    const eventType = data?.eventType;
+    if (!eventType) {
+      return;
+    }
+    const handlers = this.listeners.get(eventType);
+    if (!handlers || handlers.size === 0) {
+      return;
+    }
+    handlers.forEach((handler) => {
+      try {
+        handler(data);
+      } catch (error) {
+        this.log('ERROR', 'event handler error', {
+          eventType,
+          error: error?.message || 'unknown'
+        });
+      }
+    });
+  }
+
   handleResponse(data) {
     const requestId = data?.requestId;
     if (!requestId || !this.pendingRequests.has(requestId)) {
@@ -230,13 +266,56 @@ export class ObsWsClient {
     if (status.result === false) {
       const message = status.comment || 'request failed';
       pending.reject(new Error(message));
+    } else {
+      pending.resolve(data.responseData || {});
+    }
+    this.processQueue();
+  }
+
+  processQueue() {
+    if (this.state !== 'IDENTIFIED') {
       return;
     }
-    pending.resolve(data.responseData || {});
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    while (this.requestQueue.length > 0 && this.pendingRequests.size < this.maxInFlight) {
+      const item = this.requestQueue.shift();
+      if (!item) {
+        continue;
+      }
+      const requestId = String(this.requestCounter++);
+      const payload = {
+        op: OPS.REQUEST,
+        d: {
+          requestType: item.requestType,
+          requestId,
+          requestData: item.requestData
+        }
+      };
+      try {
+        this.socket.send(JSON.stringify(payload));
+      } catch (error) {
+        item.reject(new Error('send failed'));
+        continue;
+      }
+      const timeout = setTimeout(() => {
+        this.pendingRequests.delete(requestId);
+        item.reject(new Error(`timeout ${item.requestType}`));
+        this.processQueue();
+      }, item.timeoutMs);
+      this.pendingRequests.set(requestId, {
+        resolve: item.resolve,
+        reject: item.reject,
+        timeout
+      });
+    }
   }
 
   handleClose(event) {
+    this.socket = null;
     this.rejectAllPending(new Error('socket closed'));
+    this.clearQueue(new Error('socket closed'));
     if (this.state === 'DEGRADED_AUTH_REQUIRED') {
       return;
     }
@@ -283,5 +362,18 @@ export class ObsWsClient {
       pending.reject(error);
     });
     this.pendingRequests.clear();
+  }
+
+  clearQueue(error) {
+    if (!error) {
+      this.requestQueue = [];
+      return;
+    }
+    while (this.requestQueue.length) {
+      const item = this.requestQueue.shift();
+      if (item) {
+        item.reject(error);
+      }
+    }
   }
 }

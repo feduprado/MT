@@ -18,8 +18,9 @@ import {
 import { Logger } from './modules/logger.js';
 
 const VERSION = '0.5';
-const OBSWS_URL = 'ws://127.0.0.1:4455';
+const OBSWS_DEFAULT_URL = 'ws://127.0.0.1:4455';
 const STORAGE_KEY = 'spiderkong-obsws-password';
+const STORAGE_URL_KEY = 'spiderkong-obsws-url';
 const MAX_TIMER_MS = (199 * 60 + 59) * 1000;
 const MAX_TIMER_RESTORE_DRIFT_MS = 24 * 60 * 60 * 1000;
 
@@ -27,7 +28,7 @@ const state = createInitialGameState();
 const logger = new Logger({ capacity: 400 });
 setStorageLogger(logger);
 const obsClient = new ObsWsClient({
-  url: OBSWS_URL,
+  url: localStorage.getItem(STORAGE_URL_KEY) || OBSWS_DEFAULT_URL,
   password: localStorage.getItem(STORAGE_KEY) || '',
   onStateChange: handleObsState,
   onLog: (level, message, meta) => {
@@ -58,42 +59,42 @@ const matchTimer = new MatchTimer({
 const WS_STATUS = {
   DISCONNECTED: {
     text: 'DESCONECTADO',
-    icon: './assets/icons/link_off.svg',
+    icon: 'link_off',
     tone: 'neutral'
   },
   CONNECTING: {
     text: 'CONECTANDO',
-    icon: './assets/icons/sync.svg',
+    icon: 'sync',
     tone: 'info'
   },
   HELLO: {
     text: 'NEGOCIANDO',
-    icon: './assets/icons/sync.svg',
+    icon: 'sync',
     tone: 'info'
   },
   IDENTIFYING: {
     text: 'NEGOCIANDO',
-    icon: './assets/icons/sync.svg',
+    icon: 'sync',
     tone: 'info'
   },
   IDENTIFIED: {
     text: 'IDENTIFICADO',
-    icon: './assets/icons/check_circle.svg',
+    icon: 'check_circle',
     tone: 'success'
   },
   RECONNECTING: {
     text: 'RECONEXÃO',
-    icon: './assets/icons/sync.svg',
+    icon: 'sync',
     tone: 'info'
   },
   DEGRADED_AUTH_REQUIRED: {
     text: 'AUTH REQUIRED',
-    icon: './assets/icons/warning.svg',
+    icon: 'warning',
     tone: 'warning'
   },
   AUTH_FAILED: {
     text: 'AUTH FAILED',
-    icon: './assets/icons/error.svg',
+    icon: 'error',
     tone: 'danger'
   }
 };
@@ -258,6 +259,19 @@ function setObsPassword(password) {
   const safePassword = password || '';
   localStorage.setItem(STORAGE_KEY, safePassword);
   obsClient.setPassword(safePassword);
+}
+
+function setObsUrl(url) {
+  const safeUrl = (url || '').trim() || OBSWS_DEFAULT_URL;
+  localStorage.setItem(STORAGE_URL_KEY, safeUrl);
+  obsClient.setUrl(safeUrl);
+  obsClient.connect({ force: true });
+}
+
+function clearObsUrl() {
+  localStorage.removeItem(STORAGE_URL_KEY);
+  obsClient.setUrl(OBSWS_DEFAULT_URL);
+  obsClient.connect({ force: true });
 }
 
 function clearObsPassword() {
@@ -1109,7 +1123,9 @@ window.SK = {
   connectNow,
   disconnectNow,
   setObsPassword,
-  clearObsPassword
+  clearObsPassword,
+  setObsUrl,
+  clearObsUrl
 };
 
 export {

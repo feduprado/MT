@@ -510,7 +510,8 @@ export function setWsStatusPill({ text, icon, tone }) {
     dom.wsStatusText.textContent = text;
   }
   if (dom.wsStatusIcon) {
-    dom.wsStatusIcon.src = icon;
+    const iconName = icon ? String(icon) : '';
+    dom.wsStatusIcon.src = iconName ? `./assets/icons/${iconName}.svg` : '';
   }
 }
 
