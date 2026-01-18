@@ -29,9 +29,13 @@ function createTeam() {
   };
 }
 
+function createPenaltyArray() {
+  return Array.from({ length: 5 }, () => null);
+}
+
 export function createInitialGameState() {
   return {
-    version: '0.4.0',
+    version: '0.5.0',
     meta: {
       skin: '',
       sceneName: 'Match Center'
@@ -47,6 +51,11 @@ export function createInitialGameState() {
       aggregateAway: 0,
       penaltiesHome: 0,
       penaltiesAway: 0
+    },
+    penalties: {
+      active: false,
+      home: createPenaltyArray(),
+      away: createPenaltyArray()
     },
     timer: {
       running: false,
