@@ -208,8 +208,11 @@ export function cacheDom() {
     btnTimerSet: document.getElementById('btnTimerSet'),
     periodButtons: Array.from(document.querySelectorAll('#periodButtons [data-period]')),
     sectionPenalties: document.getElementById('sectionPenalties'),
+    penaltiesHome: document.getElementById('penaltiesHome'),
+    penaltiesAway: document.getElementById('penaltiesAway'),
     penaltiesHomeScore: document.getElementById('penaltiesHomeScore'),
     penaltiesAwayScore: document.getElementById('penaltiesAwayScore'),
+    btnPenaltiesClear: document.getElementById('btnPenaltiesClear'),
     rosterToggle: document.getElementById('rosterToggle'),
     rosterBody: document.getElementById('rosterBody'),
     rosterHomeCoach: document.getElementById('rosterHomeCoach'),
@@ -237,6 +240,8 @@ export function cacheDom() {
     timerSetSeconds: document.getElementById('timerSetSeconds'),
     btnTimerSetCancel: document.getElementById('btnTimerSetCancel'),
     btnTimerSetConfirm: document.getElementById('btnTimerSetConfirm'),
+    btnResetScoreTimer: document.getElementById('btnResetScoreTimer'),
+    btnResetAll: document.getElementById('btnResetAll'),
     btnLogCopy: document.getElementById('btnLogCopy'),
     btnLogClear: document.getElementById('btnLogClear'),
     btnLowPower: document.getElementById('btnLowPower'),
@@ -312,6 +317,9 @@ export function renderAll(state) {
   if (dom.sectionPenalties) {
     dom.sectionPenalties.classList.toggle('is-visible', state.timer.period === 'PEN');
   }
+  if (state.timer.period === 'PEN') {
+    renderPenalties(state);
+  }
 
   if (dom.rosterHomeCoach) {
     dom.rosterHomeCoach.value = state.teams.home.coach || '';
@@ -340,6 +348,79 @@ export function renderAll(state) {
 
   renderPlayersActions(state);
   renderHistory(state);
+}
+
+function createPenaltyMarker({ team, index, status }) {
+  const marker = document.createElement('button');
+  marker.type = 'button';
+  marker.className = 'penalty-marker';
+  marker.dataset.team = team;
+  marker.dataset.index = String(index);
+  marker.setAttribute('aria-label', `Penalti ${index + 1}`);
+  if (status === true) {
+    marker.classList.add('converted');
+  } else if (status === false) {
+    marker.classList.add('missed');
+  }
+  return marker;
+}
+
+function getPenaltyContainer(card) {
+  if (!card) {
+    return null;
+  }
+  const existing = card.querySelector('.penalty-markers');
+  if (existing) {
+    return existing;
+  }
+  const container = document.createElement('div');
+  container.className = 'penalty-markers';
+  card.appendChild(container);
+  return container;
+}
+
+export function renderPenalties(state) {
+  const dom = cacheDom();
+  if (!dom.penaltiesHome || !dom.penaltiesAway) {
+    return;
+  }
+  if (dom.penaltiesHomeScore) {
+    dom.penaltiesHomeScore.textContent = String(state.score.penaltiesHome ?? 0);
+  }
+  if (dom.penaltiesAwayScore) {
+    dom.penaltiesAwayScore.textContent = String(state.score.penaltiesAway ?? 0);
+  }
+
+  const homeContainer = getPenaltyContainer(dom.penaltiesHome);
+  const awayContainer = getPenaltyContainer(dom.penaltiesAway);
+  if (!homeContainer || !awayContainer) {
+    return;
+  }
+
+  const homeFragment = document.createDocumentFragment();
+  const awayFragment = document.createDocumentFragment();
+  const homeMarkers = state.penalties?.home || [];
+  const awayMarkers = state.penalties?.away || [];
+
+  for (let i = 0; i < 5; i += 1) {
+    homeFragment.appendChild(
+      createPenaltyMarker({
+        team: 'home',
+        index: i,
+        status: homeMarkers[i] ?? null
+      })
+    );
+    awayFragment.appendChild(
+      createPenaltyMarker({
+        team: 'away',
+        index: i,
+        status: awayMarkers[i] ?? null
+      })
+    );
+  }
+
+  homeContainer.replaceChildren(homeFragment);
+  awayContainer.replaceChildren(awayFragment);
 }
 
 export function renderPlayersActions(state) {
@@ -513,6 +594,33 @@ export function bindMainActions(handlers = {}) {
   }
   if (dom.btnHistoryClear && handlers.onHistoryClear) {
     dom.btnHistoryClear.addEventListener('click', handlers.onHistoryClear);
+  }
+  if (dom.btnPenaltiesClear && handlers.onPenaltiesClear) {
+    dom.btnPenaltiesClear.addEventListener('click', handlers.onPenaltiesClear);
+  }
+  if (dom.penaltiesHome && handlers.onPenaltyCycle) {
+    dom.penaltiesHome.addEventListener('click', (event) => {
+      const target = event.target.closest('.penalty-marker');
+      if (!target) {
+        return;
+      }
+      handlers.onPenaltyCycle(target.dataset.team, target.dataset.index);
+    });
+  }
+  if (dom.penaltiesAway && handlers.onPenaltyCycle) {
+    dom.penaltiesAway.addEventListener('click', (event) => {
+      const target = event.target.closest('.penalty-marker');
+      if (!target) {
+        return;
+      }
+      handlers.onPenaltyCycle(target.dataset.team, target.dataset.index);
+    });
+  }
+  if (dom.btnResetScoreTimer && handlers.onResetPartial) {
+    dom.btnResetScoreTimer.addEventListener('click', handlers.onResetPartial);
+  }
+  if (dom.btnResetAll && handlers.onResetTotal) {
+    dom.btnResetAll.addEventListener('click', handlers.onResetTotal);
   }
   if (dom.btnSubCancel && handlers.onSubCancel) {
     dom.btnSubCancel.addEventListener('click', handlers.onSubCancel);

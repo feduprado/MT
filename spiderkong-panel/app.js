@@ -3,6 +3,7 @@ import { createInitialGameState, GameState } from './modules/game-state.js';
 import { SkinManager } from './modules/skin-manager.js';
 import { MatchTimer } from './modules/timer.js';
 import { SyncEngine } from './modules/sync.js';
+import { loadState, saveStateDebounced, setStorageLogger } from './modules/storage.js';
 import {
   bindActions,
   bindMainActions,
@@ -16,12 +17,15 @@ import {
 } from './modules/ui.js';
 import { Logger } from './modules/logger.js';
 
-const VERSION = '0.4';
+const VERSION = '0.5';
 const OBSWS_URL = 'ws://127.0.0.1:4455';
 const STORAGE_KEY = 'spiderkong-obsws-password';
+const MAX_TIMER_MS = (199 * 60 + 59) * 1000;
+const MAX_TIMER_RESTORE_DRIFT_MS = 24 * 60 * 60 * 1000;
 
 const state = createInitialGameState();
 const logger = new Logger({ capacity: 400 });
+setStorageLogger(logger);
 const obsClient = new ObsWsClient({
   url: OBSWS_URL,
   password: localStorage.getItem(STORAGE_KEY) || '',
@@ -186,11 +190,134 @@ function parseClampTimerSeconds(value) {
   return Math.max(0, Math.min(59, parsed));
 }
 
+function clampTimerMs(value) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(MAX_TIMER_MS, value));
+}
+
+function persistState() {
+  saveStateDebounced(state);
+}
+
+function countConverted(list) {
+  if (!Array.isArray(list)) {
+    return 0;
+  }
+  return list.filter((value) => value === true).length;
+}
+
+function normalizePenaltyArray(values) {
+  const output = Array.from({ length: 5 }, () => null);
+  if (!Array.isArray(values)) {
+    return output;
+  }
+  for (let i = 0; i < 5; i += 1) {
+    const value = values[i];
+    if (value === true) {
+      output[i] = true;
+    } else if (value === false) {
+      output[i] = false;
+    } else {
+      output[i] = null;
+    }
+  }
+  return output;
+}
+
+function recalculatePenaltyScore() {
+  state.score.penaltiesHome = countConverted(state.penalties?.home);
+  state.score.penaltiesAway = countConverted(state.penalties?.away);
+}
+
+function applyPlayerSnapshot(target, snapshot) {
+  if (!snapshot || !target) {
+    return;
+  }
+  target.id = snapshot.id || target.id || crypto.randomUUID();
+  target.slot = snapshot.slot ?? target.slot;
+  target.number = snapshot.number ?? target.number;
+  target.name = snapshot.name ?? '';
+  target.goals = snapshot.goals ?? 0;
+  target.yellowCards = snapshot.yellowCards ?? 0;
+  target.redCard = Boolean(snapshot.redCard);
+  target.substitutedOut = Boolean(snapshot.substitutedOut);
+  target.isSubstitute = Boolean(snapshot.isSubstitute);
+  target.swapIconSide = snapshot.swapIconSide || 'default';
+  target.cardIconSide = snapshot.cardIconSide || 'default';
+}
+
+function applyTeamSnapshot(target, snapshot) {
+  if (!target || !snapshot) {
+    return;
+  }
+  target.name = snapshot.name ?? target.name;
+  target.sigla = snapshot.sigla ?? target.sigla;
+  target.coach = snapshot.coach ?? target.coach;
+  target.logo = snapshot.logo ?? target.logo;
+
+  if (Array.isArray(snapshot.slots)) {
+    snapshot.slots.slice(0, 11).forEach((playerSnapshot, index) => {
+      applyPlayerSnapshot(target.slots[index], playerSnapshot);
+    });
+  }
+
+  if (Array.isArray(snapshot.out)) {
+    target.out.length = 0;
+    snapshot.out.forEach((playerSnapshot) => {
+      const player = { ...playerSnapshot };
+      applyPlayerSnapshot(player, playerSnapshot);
+      target.out.push(player);
+    });
+  }
+
+  if (Array.isArray(snapshot.substitutionSlots)) {
+    target.substitutionSlots = Array.from({ length: 11 }, (_, index) =>
+      Boolean(snapshot.substitutionSlots[index])
+    );
+  }
+}
+
+function applyStateSnapshot(snapshot) {
+  if (!snapshot) {
+    return;
+  }
+  const base = createInitialGameState();
+  state.meta.skin = snapshot.meta?.skin ?? base.meta.skin;
+  state.meta.sceneName = snapshot.meta?.sceneName ?? base.meta.sceneName;
+
+  applyTeamSnapshot(state.teams.home, snapshot.teams?.home || base.teams.home);
+  applyTeamSnapshot(state.teams.away, snapshot.teams?.away || base.teams.away);
+
+  state.score.home = clampScore(snapshot.score?.home ?? base.score.home);
+  state.score.away = clampScore(snapshot.score?.away ?? base.score.away);
+  state.score.aggregateHome = clampScore(snapshot.score?.aggregateHome ?? base.score.aggregateHome);
+  state.score.aggregateAway = clampScore(snapshot.score?.aggregateAway ?? base.score.aggregateAway);
+  state.score.penaltiesHome = clampScore(snapshot.score?.penaltiesHome ?? base.score.penaltiesHome);
+  state.score.penaltiesAway = clampScore(snapshot.score?.penaltiesAway ?? base.score.penaltiesAway);
+
+  state.penalties.active =
+    typeof snapshot.penalties?.active === 'boolean'
+      ? snapshot.penalties.active
+      : snapshot.timer?.period === 'PEN';
+  state.penalties.home = normalizePenaltyArray(snapshot.penalties?.home);
+  state.penalties.away = normalizePenaltyArray(snapshot.penalties?.away);
+
+  state.timer.running = Boolean(snapshot.timer?.running);
+  state.timer.elapsedMs = clampTimerMs(snapshot.timer?.elapsedMs ?? 0);
+  state.timer.period = snapshot.timer?.period || base.timer.period;
+  state.timer.startedAtEpochMs = snapshot.timer?.startedAtEpochMs ?? null;
+
+  state.history = Array.isArray(snapshot.history) ? snapshot.history.slice(0, 50) : [];
+  recalculatePenaltyScore();
+}
 function updateScore(team, delta) {
   const current = state.score[team] ?? 0;
   state.score[team] = clampScore(current + delta);
   renderAll(state);
   syncEngine.syncScore(state);
+  persistState();
 }
 
 function updateAggregate(team, value) {
@@ -201,6 +328,7 @@ function updateAggregate(team, value) {
   }
   renderAll(state);
   syncEngine.syncScore(state);
+  persistState();
 }
 
 function updateTeamFromInputs(team) {
@@ -215,6 +343,7 @@ function updateTeamFromInputs(team) {
     state.teams.away.coach = dom.awayCoach?.value.trim() || '';
   }
   renderAll(state);
+  persistState();
 }
 
 function openTimerModal() {
@@ -253,6 +382,7 @@ function confirmTimerModal() {
   state.timer.running = matchTimer.running;
   state.timer.startedAtEpochMs = matchTimer.startedAtEpochMs;
   renderAll(state);
+  persistState();
   closeTimerModal();
 }
 
@@ -261,7 +391,9 @@ function selectPeriod(period) {
     return;
   }
   state.timer.period = period;
+  state.penalties.active = period === 'PEN';
   renderAll(state);
+  persistState();
 }
 
 function toggleRoster() {
@@ -297,6 +429,7 @@ function clearRoster(team) {
     });
   }
   renderAll(state);
+  persistState();
 }
 
 function saveRoster(team) {
@@ -316,6 +449,7 @@ function saveRoster(team) {
   }
   renderAll(state);
   syncEngine.syncAllPlayers(state);
+  persistState();
 }
 
 function getHistoryMinute() {
@@ -385,6 +519,7 @@ function onPlayerGoal(team, slotIndex) {
   renderAll(state);
   syncEngine.syncPlayer(team, slotIndex + 1, state);
   syncEngine.syncScore(state);
+  persistState();
 }
 
 function onPlayerYellow(team, slotIndex) {
@@ -414,6 +549,7 @@ function onPlayerYellow(team, slotIndex) {
   }
   renderAll(state);
   syncEngine.syncPlayer(team, slotIndex + 1, state);
+  persistState();
 }
 
 function onPlayerRed(team, slotIndex) {
@@ -432,6 +568,7 @@ function onPlayerRed(team, slotIndex) {
   });
   renderAll(state);
   syncEngine.syncPlayer(team, slotIndex + 1, state);
+  persistState();
 }
 
 function onPlayerSubOpen(team, slotIndex) {
@@ -516,11 +653,131 @@ function onPlayerSubConfirm() {
   renderAll(state);
   syncEngine.syncPlayer(team, slotIndex + 1, state);
   closeSubModal();
+  persistState();
 }
 
 function onHistoryClear() {
   state.history = [];
   renderAll(state);
+  persistState();
+}
+
+function cyclePenalty(value) {
+  if (value === null || value === undefined) {
+    return true;
+  }
+  if (value === true) {
+    return false;
+  }
+  return null;
+}
+
+function logPenaltiesStub() {
+  if (syncEngine.isIdentified()) {
+    logger.info('sync stub: penalties');
+    return;
+  }
+  syncEngine.logOffline();
+}
+
+function logResetStub() {
+  if (syncEngine.isIdentified()) {
+    logger.info('sync stub: reset');
+    return;
+  }
+  syncEngine.logOffline();
+}
+
+function onPenaltyCycle(team, index) {
+  const parsedIndex = Number.parseInt(index, 10);
+  if (!team || Number.isNaN(parsedIndex)) {
+    return;
+  }
+  if (team !== 'home' && team !== 'away') {
+    return;
+  }
+  const list = team === 'home' ? state.penalties.home : state.penalties.away;
+  if (!Array.isArray(list) || parsedIndex < 0 || parsedIndex > 4) {
+    return;
+  }
+  list[parsedIndex] = cyclePenalty(list[parsedIndex]);
+  recalculatePenaltyScore();
+  renderAll(state);
+  persistState();
+  logPenaltiesStub();
+}
+
+function onPenaltiesClear() {
+  state.penalties.home = normalizePenaltyArray([]);
+  state.penalties.away = normalizePenaltyArray([]);
+  recalculatePenaltyScore();
+  renderAll(state);
+  persistState();
+  logPenaltiesStub();
+}
+
+function resetPlayersStats(teamState) {
+  teamState.slots.forEach((player) => {
+    player.goals = 0;
+    player.yellowCards = 0;
+    player.redCard = false;
+  });
+  teamState.out.forEach((player) => {
+    player.goals = 0;
+    player.yellowCards = 0;
+    player.redCard = false;
+  });
+}
+
+function onResetPartial() {
+  state.score.home = 0;
+  state.score.away = 0;
+  state.score.aggregateHome = 0;
+  state.score.aggregateAway = 0;
+  state.penalties.home = normalizePenaltyArray([]);
+  state.penalties.away = normalizePenaltyArray([]);
+  recalculatePenaltyScore();
+
+  matchTimer.reset();
+  state.timer.elapsedMs = matchTimer.elapsedMs;
+  state.timer.running = matchTimer.running;
+  state.timer.startedAtEpochMs = matchTimer.startedAtEpochMs;
+  state.timer.period = '1T';
+  state.penalties.active = false;
+
+  resetPlayersStats(state.teams.home);
+  resetPlayersStats(state.teams.away);
+
+  addHistory({
+    type: 'system_reset_partial',
+    minute: '—',
+    label: 'Reset parcial aplicado'
+  });
+
+  renderAll(state);
+  persistState();
+  logResetStub();
+}
+
+function onResetTotal() {
+  const preservedMeta = {
+    skin: state.meta.skin,
+    sceneName: state.meta.sceneName
+  };
+  const freshState = createInitialGameState();
+  freshState.meta.skin = preservedMeta.skin;
+  freshState.meta.sceneName = preservedMeta.sceneName;
+  applyStateSnapshot(freshState);
+
+  matchTimer.reset();
+  matchTimer.elapsedMs = state.timer.elapsedMs;
+  matchTimer.running = state.timer.running;
+  matchTimer.startedAtEpochMs = state.timer.startedAtEpochMs;
+  matchTimer.lastSecond = Math.floor(state.timer.elapsedMs / 1000);
+
+  renderAll(state);
+  persistState();
+  logResetStub();
 }
 
 function handlePlayerAction(dataset) {
@@ -574,6 +831,46 @@ function initUi() {
   renderAll(state);
 }
 
+function restoreStateFromStorage() {
+  const restored = loadState();
+  if (!restored) {
+    return false;
+  }
+  applyStateSnapshot(restored);
+  return true;
+}
+
+function restoreTimerFromState() {
+  matchTimer.elapsedMs = clampTimerMs(state.timer.elapsedMs || 0);
+  state.timer.elapsedMs = matchTimer.elapsedMs;
+  matchTimer.lastSecond = Math.floor(matchTimer.elapsedMs / 1000);
+  if (!state.timer.running) {
+    return;
+  }
+  const startedAt = state.timer.startedAtEpochMs;
+  if (!Number.isFinite(startedAt)) {
+    state.timer.running = false;
+    state.timer.startedAtEpochMs = null;
+    return;
+  }
+  const drift = Date.now() - startedAt;
+  if (drift > MAX_TIMER_RESTORE_DRIFT_MS) {
+    logger.warn('timer drift too large, pausing');
+    state.timer.running = false;
+    state.timer.elapsedMs = clampTimerMs(drift);
+    state.timer.startedAtEpochMs = null;
+    matchTimer.elapsedMs = state.timer.elapsedMs;
+    matchTimer.lastSecond = Math.floor(matchTimer.elapsedMs / 1000);
+    renderAll(state);
+    return;
+  }
+  state.timer.elapsedMs = clampTimerMs(drift);
+  matchTimer.elapsedMs = state.timer.elapsedMs;
+  matchTimer.lastSecond = Math.floor(matchTimer.elapsedMs / 1000);
+  matchTimer.start();
+  renderAll(state);
+}
+
 function bindEvents() {
   bindMainActions({
     onApplyHomeTeam: () => updateTeamFromInputs('home'),
@@ -588,16 +885,19 @@ function bindEvents() {
       matchTimer.start();
       state.timer.running = matchTimer.running;
       state.timer.startedAtEpochMs = matchTimer.startedAtEpochMs;
+      persistState();
     },
     onTimerPause: () => {
       matchTimer.pause();
       state.timer.running = matchTimer.running;
       state.timer.elapsedMs = matchTimer.elapsedMs;
+      persistState();
     },
     onTimerReset: () => {
       matchTimer.reset();
       state.timer.running = matchTimer.running;
       state.timer.elapsedMs = matchTimer.elapsedMs;
+      persistState();
     },
     onTimerSet: () => openTimerModal(),
     onTimerSetCancel: () => closeTimerModal(),
@@ -613,6 +913,10 @@ function bindEvents() {
     onAwayRosterClear: () => clearRoster('away'),
     onAwayRosterSave: () => saveRoster('away'),
     onHistoryClear: () => onHistoryClear(),
+    onPenaltyCycle: (team, index) => onPenaltyCycle(team, index),
+    onPenaltiesClear: () => onPenaltiesClear(),
+    onResetPartial: () => onResetPartial(),
+    onResetTotal: () => onResetTotal(),
     onSubCancel: () => closeSubModal(),
     onSubConfirm: () => onPlayerSubConfirm(),
     onPlayerAction: (dataset) => handlePlayerAction(dataset)
@@ -632,7 +936,9 @@ function bindEvents() {
 
 function init() {
   registerLoggerPanel();
+  restoreStateFromStorage();
   initUi();
+  restoreTimerFromState();
   bindEvents();
   logger.info(`SpiderKong Control Panel ${VERSION} ready.`);
   connectNow();
