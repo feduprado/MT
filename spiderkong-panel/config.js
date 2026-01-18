@@ -32,10 +32,10 @@ window.CONFIG = {
  
   // Font mapping per skin
   skinFonts: {
-    generico: "Nunito",
+    generico: "NUNITO",
     champions: "CHAMPIONS",
     libertadores: "BRANDING",
-    brasileiraocopa: "Nunito"
+    brasileiraocopa: "NUNITO"
   },
  
   // ===========================================

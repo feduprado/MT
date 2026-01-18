@@ -59,6 +59,41 @@
  
   const uuid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
  
+  const SKIN_FONT_FALLBACKS = {
+    CHAMPIONS: "Regular",
+    BRANDING: "Medium",
+    NUNITO: "Medium"
+  };
+ 
+  const SKIN_FONT_SUPPORT = {
+    CHAMPIONS: ["regular"],
+    BRANDING: ["regular", "medium", "bold", "semibold", "extrabold", "black", "light", "italic", "medium italic", "bold italic"],
+    NUNITO: ["regular", "medium", "bold", "semibold", "extrabold", "black", "light", "italic", "medium italic", "bold italic"]
+  };
+ 
+  const BASE_SKIN_TEXT_ITEMS = [
+    "aovivo_<skin>",
+    "cronometro_etapa_<skin>",
+    "cronometro_tempo_<skin>",
+    "placar_siglatime_esq_<skin>",
+    "placar_siglatime_dir_<skin>",
+    "placar_gols_esq_<skin>",
+    "placar_gols_dir_<skin>",
+    "placar_agregado_esq_<skin>",
+    "placar_agregado_dir_<skin>",
+    "esq_escalacao_<skin>",
+    "dir_escalacao_<skin>",
+    "esq_escalacao_time_<skin>",
+    "dir_escalacao_time_<skin>",
+    "esq_escalacao_tecnico_<skin>",
+    "dir_escalacao_tecnico_<skin>",
+    "esq_historico_<skin>",
+    "dir_historico_<skin>"
+  ];
+ 
+  const textMeasureCanvas = document.createElement("canvas");
+  const textMeasureContext = textMeasureCanvas.getContext("2d");
+ 
   // ===========================================
   // DOM ELEMENTS CACHE
   // ===========================================
@@ -274,7 +309,11 @@
  
     // Caches
     sceneItemIdCache: new Map(),
-    inputFileCache: new Map()
+    inputFileCache: new Map(),
+    inputSettingsCache: new Map(),
+    textAnchors: new Map(),
+    textMetrics: new Map(),
+    managedTextItems: new Set()
   };
  
   // ===========================================
@@ -584,6 +623,220 @@
     return pattern.replace(/<skin>/g, state.currentSkin);
   }
  
+  function getSkinFontFace(skin) {
+    const font = CFG.skinFonts?.[skin];
+    return font || "NUNITO";
+  }
+ 
+  function normalizeFontStyle(style) {
+    return String(style || "").trim().replace(/\s+/g, " ").toLowerCase();
+  }
+ 
+  function getFontWeightFromStyle(style) {
+    const normalized = normalizeFontStyle(style);
+    if (normalized.includes("black")) return 900;
+    if (normalized.includes("extrabold") || normalized.includes("extra bold")) return 800;
+    if (normalized.includes("bold")) return 700;
+    if (normalized.includes("semibold") || normalized.includes("semi bold")) return 600;
+    if (normalized.includes("medium")) return 500;
+    if (normalized.includes("light")) return 300;
+    return 400;
+  }
+ 
+  function getFontStyleFromStyle(style) {
+    const normalized = normalizeFontStyle(style);
+    return normalized.includes("italic") ? "italic" : "normal";
+  }
+ 
+  function buildCanvasFont(font) {
+    if (!font) return "";
+    const weight = getFontWeightFromStyle(font.style);
+    const fontStyle = getFontStyleFromStyle(font.style);
+    const size = Number(font.size) || 0;
+    const face = font.face || "NUNITO";
+    return `${fontStyle} ${weight} ${size}px "${face}"`;
+  }
+ 
+  function measureTextWidth(text, font) {
+    if (!textMeasureContext || !font) return 0;
+    const canvasFont = buildCanvasFont(font);
+    if (!canvasFont) return 0;
+    textMeasureContext.font = canvasFont;
+    const lines = String(text || "").split("\n");
+    let maxWidth = 0;
+    for (const line of lines) {
+      const width = textMeasureContext.measureText(line).width;
+      if (width > maxWidth) maxWidth = width;
+    }
+    return maxWidth;
+  }
+ 
+  function getAlignmentFromName(name) {
+    if (/(^|_)esq(_|$)/.test(name)) return "left";
+    if (/(^|_)dir(_|$)/.test(name)) return "right";
+    return "center";
+  }
+ 
+  function getAlignmentFactor(alignment) {
+    if (alignment === undefined || alignment === null) return 0;
+    const horizontal = alignment % 4;
+    if (horizontal === 1) return 0.5;
+    if (horizontal === 2) return 1;
+    return 0;
+  }
+ 
+  function buildSkinTextItemNames(skin) {
+    const items = BASE_SKIN_TEXT_ITEMS.map((item) => item.replace("<skin>", skin));
+    for (let i = 1; i <= 11; i++) {
+      const slot = pad2(i);
+      items.push(`esq_jogador_${slot}_${skin}`);
+      items.push(`dir_jogador_${slot}_${skin}`);
+      items.push(`esq_moregoalball_text_${slot}_${skin}`);
+      items.push(`dir_moregoalball_text_${slot}_${skin}`);
+    }
+    return items;
+  }
+ 
+  function refreshManagedTextItems(skin) {
+    state.managedTextItems = new Set(buildSkinTextItemNames(skin));
+  }
+ 
+  async function getSceneItemId(sceneName, itemName) {
+    const cacheKey = `${sceneName}:${itemName}`;
+    let sceneItemId = state.sceneItemIdCache.get(cacheKey);
+ 
+    if (!sceneItemId) {
+      const res = await call("GetSceneItemId", {
+        sceneName,
+        sourceName: itemName
+      });
+      sceneItemId = res.sceneItemId;
+      state.sceneItemIdCache.set(cacheKey, sceneItemId);
+    }
+ 
+    return sceneItemId;
+  }
+ 
+  async function getSceneItemTransform(sceneName, itemName) {
+    const sceneItemId = await getSceneItemId(sceneName, itemName);
+    const res = await call("GetSceneItemTransform", {
+      sceneName,
+      sceneItemId
+    });
+    return { sceneItemId, transform: res.sceneItemTransform || {} };
+  }
+ 
+  function getTransformWidth(transform) {
+    if (!transform) return 0;
+    if (typeof transform.width === "number") return transform.width;
+    if (typeof transform.sourceWidth === "number") {
+      const scaleX = typeof transform.scaleX === "number" ? transform.scaleX : 1;
+      return transform.sourceWidth * scaleX;
+    }
+    return 0;
+  }
+ 
+  async function getInputSettingsCached(inputName) {
+    if (state.inputSettingsCache.has(inputName)) {
+      return state.inputSettingsCache.get(inputName);
+    }
+    const res = await call("GetInputSettings", { inputName });
+    const settings = res.inputSettings || {};
+    state.inputSettingsCache.set(inputName, settings);
+    return settings;
+  }
+ 
+  function resolveFontStyle(targetFace, style) {
+    const normalizedStyle = normalizeFontStyle(style || "");
+    const supported = SKIN_FONT_SUPPORT[targetFace] || [];
+    if (supported.includes(normalizedStyle)) {
+      return style || "";
+    }
+    return SKIN_FONT_FALLBACKS[targetFace] || style || "";
+  }
+ 
+  async function ensureTextAnchor(inputName) {
+    if (state.textAnchors.has(inputName)) return state.textAnchors.get(inputName);
+    if (!state.currentScene) return null;
+ 
+    const { transform } = await getSceneItemTransform(state.currentScene, inputName);
+    const width = getTransformWidth(transform);
+    if (!width) return null;
+ 
+    const alignment = getAlignmentFromName(inputName);
+    const alignmentFactor = getAlignmentFactor(transform.alignment);
+    const leftEdge = (transform.positionX || 0) - alignmentFactor * width;
+    const anchorX = alignment === "left" ? leftEdge : alignment === "center" ? leftEdge + width / 2 : leftEdge + width;
+    const anchor = { anchorX, alignment };
+    state.textAnchors.set(inputName, anchor);
+    return anchor;
+  }
+ 
+  async function updateTextFont(inputName, targetFace) {
+    const settings = await getInputSettingsCached(inputName);
+    const font = settings.font;
+    if (!font) return;
+ 
+    const resolvedStyle = resolveFontStyle(targetFace, font.style);
+    const nextFont = {
+      face: targetFace,
+      style: resolvedStyle,
+      size: font.size,
+      flags: font.flags
+    };
+ 
+    if (font.face === nextFont.face && font.style === nextFont.style) {
+      return;
+    }
+ 
+    await call("SetInputSettings", {
+      inputName,
+      inputSettings: { font: nextFont }
+    });
+ 
+    state.inputSettingsCache.set(inputName, {
+      ...settings,
+      font: nextFont
+    });
+  }
+ 
+  async function updateTextAlignment(inputName, textOverride = null) {
+    if (!state.currentScene) return;
+ 
+    const anchor = await ensureTextAnchor(inputName);
+    if (!anchor) return;
+ 
+    const settings = await getInputSettingsCached(inputName);
+    const font = settings.font;
+    if (!font) return;
+ 
+    const text = textOverride !== null ? textOverride : settings.text || "";
+    const width = measureTextWidth(text, font);
+    state.textMetrics.set(inputName, { width, text });
+ 
+    const { sceneItemId, transform } = await getSceneItemTransform(state.currentScene, inputName);
+    const alignmentFactor = getAlignmentFactor(transform.alignment);
+    let leftEdge = anchor.anchorX;
+ 
+    if (anchor.alignment === "center") {
+      leftEdge = anchor.anchorX - width / 2;
+    } else if (anchor.alignment === "right") {
+      leftEdge = anchor.anchorX - width;
+    }
+ 
+    const positionX = leftEdge + alignmentFactor * width;
+    const positionY = transform.positionY || 0;
+ 
+    await call("SetSceneItemTransform", {
+      sceneName: state.currentScene,
+      sceneItemId,
+      sceneItemTransform: {
+        positionX,
+        positionY
+      }
+    });
+  }
+ 
   async function setInputText(inputName, text) {
     if (!state.connected || !inputName) return;
  
@@ -592,6 +845,15 @@
         inputName,
         inputSettings: { text: String(text) }
       });
+      const cached = state.inputSettingsCache.get(inputName) || {};
+      state.inputSettingsCache.set(inputName, {
+        ...cached,
+        text: String(text)
+      });
+ 
+      if (state.managedTextItems.has(inputName)) {
+        await updateTextAlignment(inputName, String(text));
+      }
     } catch (err) {
       // Silent fail for non-existent inputs
     }
@@ -614,19 +876,7 @@
     if (!state.connected) return;
  
     try {
-      // Get scene item ID
-      const cacheKey = `${sceneName}:${itemName}`;
-      let sceneItemId = state.sceneItemIdCache.get(cacheKey);
- 
-      if (!sceneItemId) {
-        const res = await call("GetSceneItemId", {
-          sceneName,
-          sourceName: itemName
-        });
-        sceneItemId = res.sceneItemId;
-        state.sceneItemIdCache.set(cacheKey, sceneItemId);
-      }
- 
+      const sceneItemId = await getSceneItemId(sceneName, itemName);
       await call("SetSceneItemEnabled", {
         sceneName,
         sceneItemId,
@@ -640,15 +890,30 @@
   // ===========================================
   // SKIN MANAGEMENT
   // ===========================================
+  async function syncSkinTextStyles() {
+    if (!state.connected || !state.currentScene) return;
+ 
+    refreshManagedTextItems(state.currentSkin);
+    const targetFace = getSkinFontFace(state.currentSkin);
+ 
+    for (const inputName of state.managedTextItems) {
+      try {
+        await ensureTextAnchor(inputName);
+        await updateTextFont(inputName, targetFace);
+        await updateTextAlignment(inputName);
+      } catch (err) {
+        // Ignore missing sources
+      }
+    }
+  }
+ 
   async function applySkin(newSkin, animate = true) {
     const oldSkin = state.currentSkin;
     state.currentSkin = newSkin;
  
     log(`Applying skin: ${oldSkin} -> ${newSkin}`);
  
-    // Update font for all text inputs based on skin
-    const font = CFG.skinFonts?.[newSkin] || "Nunito";
-    // Font updates would be applied here if needed
+    refreshManagedTextItems(newSkin);
  
     // Re-sync everything with new skin
     await syncAll();
@@ -677,6 +942,8 @@
     }
  
     log("Starting full sync...");
+ 
+    await syncSkinTextStyles();
  
     await Promise.all([
       syncScore(),
