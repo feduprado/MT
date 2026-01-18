@@ -16,7 +16,7 @@ import {
 } from './modules/ui.js';
 import { Logger } from './modules/logger.js';
 
-const VERSION = '0.3';
+const VERSION = '0.4';
 const OBSWS_URL = 'ws://127.0.0.1:4455';
 const STORAGE_KEY = 'spiderkong-obsws-password';
 
@@ -31,10 +31,10 @@ const obsClient = new ObsWsClient({
   }
 });
 const skinManager = new SkinManager();
-const syncEngine = new SyncEngine();
+const syncEngine = new SyncEngine(obsClient, logger, () => state);
 
 let lowPowerEnabled = false;
-let offlineLogPending = false;
+let substitutionContext = null;
 
 const matchTimer = new MatchTimer({
   onTick: (formatted, rawMs) => {
@@ -94,9 +94,6 @@ function handleObsState(stateName) {
   const config = WS_STATUS[stateName] || WS_STATUS.DISCONNECTED;
   setWsStatusPill(config);
   updateSyncButtonLabel(stateName);
-  if (stateName === 'IDENTIFIED') {
-    offlineLogPending = false;
-  }
 }
 
 function updateSyncButtonLabel(stateName) {
@@ -161,17 +158,6 @@ function clearObsPassword() {
   obsClient.setPassword('');
 }
 
-function logSyncStub(topic) {
-  if (obsClient.state === 'IDENTIFIED') {
-    logger.info(`sync stub: ${topic}`);
-    return;
-  }
-  if (!offlineLogPending) {
-    logger.info('offline: changes pending');
-    offlineLogPending = true;
-  }
-}
-
 function clampScore(value) {
   return Math.max(0, Math.min(99, value));
 }
@@ -204,7 +190,7 @@ function updateScore(team, delta) {
   const current = state.score[team] ?? 0;
   state.score[team] = clampScore(current + delta);
   renderAll(state);
-  logSyncStub('score');
+  syncEngine.syncScore(state);
 }
 
 function updateAggregate(team, value) {
@@ -214,7 +200,7 @@ function updateAggregate(team, value) {
     state.score.aggregateAway = parseClampNumber(value);
   }
   renderAll(state);
-  logSyncStub('score');
+  syncEngine.syncScore(state);
 }
 
 function updateTeamFromInputs(team) {
@@ -229,7 +215,6 @@ function updateTeamFromInputs(team) {
     state.teams.away.coach = dom.awayCoach?.value.trim() || '';
   }
   renderAll(state);
-  logSyncStub('teams');
 }
 
 function openTimerModal() {
@@ -268,7 +253,6 @@ function confirmTimerModal() {
   state.timer.running = matchTimer.running;
   state.timer.startedAtEpochMs = matchTimer.startedAtEpochMs;
   renderAll(state);
-  logSyncStub('timer');
   closeTimerModal();
 }
 
@@ -278,7 +262,6 @@ function selectPeriod(period) {
   }
   state.timer.period = period;
   renderAll(state);
-  logSyncStub('timer');
 }
 
 function toggleRoster() {
@@ -304,12 +287,12 @@ function clearRoster(team) {
   });
   if (team === 'home') {
     state.teams.home.coach = '';
-    state.teams.home.players.forEach((player) => {
+    state.teams.home.slots.forEach((player) => {
       player.name = '';
     });
   } else {
     state.teams.away.coach = '';
-    state.teams.away.players.forEach((player) => {
+    state.teams.away.slots.forEach((player) => {
       player.name = '';
     });
   }
@@ -323,16 +306,245 @@ function saveRoster(team) {
   if (team === 'home') {
     state.teams.home.coach = coachInput?.value.trim() || '';
     players.forEach((input, index) => {
-      state.teams.home.players[index].name = input?.value.trim() || '';
+      state.teams.home.slots[index].name = input?.value.trim() || '';
     });
   } else {
     state.teams.away.coach = coachInput?.value.trim() || '';
     players.forEach((input, index) => {
-      state.teams.away.players[index].name = input?.value.trim() || '';
+      state.teams.away.slots[index].name = input?.value.trim() || '';
     });
   }
   renderAll(state);
-  logSyncStub('teams');
+  syncEngine.syncAllPlayers(state);
+}
+
+function getHistoryMinute() {
+  if (state.timer.period === 'INT' || state.timer.period === 'PEN') {
+    return '—';
+  }
+  const baseMinute = Math.floor((state.timer.elapsedMs || 0) / 60000);
+  let offset = 0;
+  if (state.timer.period === '2T') {
+    offset = 45;
+  }
+  if (state.timer.period === 'PRO') {
+    offset = 90;
+  }
+  return `${baseMinute + offset}'`;
+}
+
+function addHistory(entry) {
+  state.history.unshift(entry);
+  if (state.history.length > 50) {
+    state.history.length = 50;
+  }
+}
+
+function buildHistoryLabel({ type, team, player, playerIn }) {
+  const teamLabel = team === 'home' ? 'Casa' : 'Visitante';
+  if (type === 'goal') {
+    return `${teamLabel} Gol ${player.number} ${player.name}`;
+  }
+  if (type === 'yellow_card') {
+    return `${teamLabel} Cartao amarelo ${player.number} ${player.name}`;
+  }
+  if (type === 'red_card') {
+    return `${teamLabel} Cartao vermelho ${player.number} ${player.name}`;
+  }
+  if (type === 'second_yellow_red') {
+    return `${teamLabel} Segundo amarelo ${player.number} ${player.name}`;
+  }
+  if (type === 'substitution') {
+    return `${teamLabel} Substituicao ${player.number} ${player.name} saiu / ${playerIn.number} ${playerIn.name} entrou`;
+  }
+  return '';
+}
+
+function onPlayerGoal(team, slotIndex) {
+  const player = state.teams[team].slots[slotIndex];
+  if (!player || player.redCard) {
+    return;
+  }
+  player.goals += 1;
+  state.score[team] = clampScore((state.score[team] || 0) + 1);
+  if (player.yellowCards > 0 || player.redCard) {
+    player.cardIconSide = player.cardIconSide === 'default' ? 'swapped' : 'default';
+  }
+  if (state.teams[team].substitutionSlots[slotIndex]) {
+    player.swapIconSide = player.swapIconSide === 'default' ? 'swapped' : 'default';
+  }
+  addHistory({
+    type: 'goal',
+    team,
+    playerName: player.name,
+    playerNumber: player.number,
+    minute: getHistoryMinute(),
+    totalGoals: player.goals,
+    label: buildHistoryLabel({ type: 'goal', team, player })
+  });
+  renderAll(state);
+  syncEngine.syncPlayer(team, slotIndex + 1, state);
+  syncEngine.syncScore(state);
+}
+
+function onPlayerYellow(team, slotIndex) {
+  const player = state.teams[team].slots[slotIndex];
+  if (!player || player.redCard || player.yellowCards >= 2) {
+    return;
+  }
+  player.yellowCards += 1;
+  addHistory({
+    type: 'yellow_card',
+    team,
+    playerName: player.name,
+    playerNumber: player.number,
+    minute: getHistoryMinute(),
+    label: buildHistoryLabel({ type: 'yellow_card', team, player })
+  });
+  if (player.yellowCards === 2) {
+    player.redCard = true;
+    addHistory({
+      type: 'second_yellow_red',
+      team,
+      playerName: player.name,
+      playerNumber: player.number,
+      minute: getHistoryMinute(),
+      label: buildHistoryLabel({ type: 'second_yellow_red', team, player })
+    });
+  }
+  renderAll(state);
+  syncEngine.syncPlayer(team, slotIndex + 1, state);
+}
+
+function onPlayerRed(team, slotIndex) {
+  const player = state.teams[team].slots[slotIndex];
+  if (!player || player.redCard) {
+    return;
+  }
+  player.redCard = true;
+  addHistory({
+    type: 'red_card',
+    team,
+    playerName: player.name,
+    playerNumber: player.number,
+    minute: getHistoryMinute(),
+    label: buildHistoryLabel({ type: 'red_card', team, player })
+  });
+  renderAll(state);
+  syncEngine.syncPlayer(team, slotIndex + 1, state);
+}
+
+function onPlayerSubOpen(team, slotIndex) {
+  const player = state.teams[team].slots[slotIndex];
+  if (!player || player.redCard) {
+    return;
+  }
+  const dom = cacheDom();
+  if (!dom.modalMask || !dom.modalSubstitution) {
+    return;
+  }
+  if (dom.subOutNumber) {
+    dom.subOutNumber.textContent = String(player.number ?? '');
+  }
+  if (dom.subOutName) {
+    dom.subOutName.textContent = player.name || '';
+  }
+  if (dom.subInNumber) {
+    dom.subInNumber.value = '';
+  }
+  if (dom.subInName) {
+    dom.subInName.value = '';
+  }
+  substitutionContext = { team, slotIndex };
+  dom.modalMask.classList.remove('hidden');
+  dom.modalSubstitution.classList.remove('hidden');
+}
+
+function closeSubModal() {
+  const dom = cacheDom();
+  if (!dom.modalMask || !dom.modalSubstitution) {
+    return;
+  }
+  dom.modalMask.classList.add('hidden');
+  dom.modalSubstitution.classList.add('hidden');
+  substitutionContext = null;
+}
+
+function onPlayerSubConfirm() {
+  const dom = cacheDom();
+  if (!substitutionContext || !dom.subInName || !dom.subInNumber) {
+    return;
+  }
+  const name = dom.subInName.value.trim();
+  if (!name) {
+    return;
+  }
+  const number = parseClampNumber(dom.subInNumber.value || '0');
+  const { team, slotIndex } = substitutionContext;
+  const teamState = state.teams[team];
+  const playerOut = teamState.slots[slotIndex];
+  if (!playerOut) {
+    return;
+  }
+  playerOut.substitutedOut = true;
+  teamState.out.push(playerOut);
+  const playerIn = {
+    id: crypto.randomUUID(),
+    slot: playerOut.slot,
+    number,
+    name,
+    goals: 0,
+    yellowCards: 0,
+    redCard: false,
+    substitutedOut: false,
+    isSubstitute: true,
+    swapIconSide: playerOut.swapIconSide,
+    cardIconSide: playerOut.cardIconSide
+  };
+  teamState.slots[slotIndex] = playerIn;
+  teamState.substitutionSlots[slotIndex] = true;
+  addHistory({
+    type: 'substitution',
+    team,
+    playerName: playerOut.name,
+    playerNumber: playerOut.number,
+    minute: getHistoryMinute(),
+    label: buildHistoryLabel({ type: 'substitution', team, player: playerOut, playerIn }),
+    playerInName: playerIn.name,
+    playerInNumber: playerIn.number
+  });
+  renderAll(state);
+  syncEngine.syncPlayer(team, slotIndex + 1, state);
+  closeSubModal();
+}
+
+function onHistoryClear() {
+  state.history = [];
+  renderAll(state);
+}
+
+function handlePlayerAction(dataset) {
+  const team = dataset.team;
+  const slotIndex = Number.parseInt(dataset.slot, 10);
+  if (!team || Number.isNaN(slotIndex)) {
+    return;
+  }
+  switch (dataset.action) {
+    case 'goal':
+      onPlayerGoal(team, slotIndex);
+      break;
+    case 'yellow':
+      onPlayerYellow(team, slotIndex);
+      break;
+    case 'red':
+      onPlayerRed(team, slotIndex);
+      break;
+    case 'substitution':
+      onPlayerSubOpen(team, slotIndex);
+      break;
+    default:
+      break;
+  }
 }
 
 function initUi() {
@@ -376,30 +588,34 @@ function bindEvents() {
       matchTimer.start();
       state.timer.running = matchTimer.running;
       state.timer.startedAtEpochMs = matchTimer.startedAtEpochMs;
-      logSyncStub('timer');
     },
     onTimerPause: () => {
       matchTimer.pause();
       state.timer.running = matchTimer.running;
       state.timer.elapsedMs = matchTimer.elapsedMs;
-      logSyncStub('timer');
     },
     onTimerReset: () => {
       matchTimer.reset();
       state.timer.running = matchTimer.running;
       state.timer.elapsedMs = matchTimer.elapsedMs;
-      logSyncStub('timer');
     },
     onTimerSet: () => openTimerModal(),
     onTimerSetCancel: () => closeTimerModal(),
     onTimerSetConfirm: () => confirmTimerModal(),
-    onModalMaskClick: () => closeTimerModal(),
+    onModalMaskClick: () => {
+      closeTimerModal();
+      closeSubModal();
+    },
     onPeriodSelect: (period) => selectPeriod(period),
     onRosterToggle: () => toggleRoster(),
     onHomeRosterClear: () => clearRoster('home'),
     onHomeRosterSave: () => saveRoster('home'),
     onAwayRosterClear: () => clearRoster('away'),
-    onAwayRosterSave: () => saveRoster('away')
+    onAwayRosterSave: () => saveRoster('away'),
+    onHistoryClear: () => onHistoryClear(),
+    onSubCancel: () => closeSubModal(),
+    onSubConfirm: () => onPlayerSubConfirm(),
+    onPlayerAction: (dataset) => handlePlayerAction(dataset)
   });
 
   bindActions({

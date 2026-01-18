@@ -14,6 +14,162 @@ function getRosterInputs(prefix) {
   });
 }
 
+function formatPlayerNumber(value) {
+  const numeric = Number.parseInt(value, 10);
+  if (Number.isNaN(numeric)) {
+    return '00';
+  }
+  return String(Math.max(0, Math.min(99, numeric))).padStart(2, '0');
+}
+
+function createBadge(label, className, text) {
+  const badge = document.createElement('span');
+  badge.className = `player-badge ${className}`;
+  badge.setAttribute('aria-label', label);
+  if (text) {
+    badge.textContent = text;
+  }
+  return badge;
+}
+
+function buildPlayerRow({ team, slotIndex, player, isAway }) {
+  const row = document.createElement('div');
+  row.className = 'player-row';
+  if (player.substitutedOut) {
+    row.classList.add('substituted');
+  }
+  if (player.redCard) {
+    row.classList.add('expelled');
+  }
+
+  const number = document.createElement('span');
+  number.className = 'player-number';
+  number.textContent = formatPlayerNumber(player.number);
+
+  const name = document.createElement('span');
+  name.className = 'player-name';
+  name.textContent = player.name || 'Sem nome';
+
+  const badges = document.createElement('div');
+  badges.className = 'player-badges';
+  if (player.goals > 0) {
+    badges.appendChild(createBadge('Gols', 'badge-goal', String(player.goals)));
+  }
+  if (player.yellowCards === 1) {
+    badges.appendChild(createBadge('Cartao amarelo', 'badge-yellow'));
+  }
+  if (player.yellowCards >= 2) {
+    badges.appendChild(createBadge('Segundo amarelo', 'badge-yellow-red'));
+  }
+  if (player.redCard) {
+    badges.appendChild(createBadge('Cartao vermelho', 'badge-red'));
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'player-actions';
+
+  const actionButtons = [
+    {
+      action: 'goal',
+      label: 'Gol',
+      className: 'btn-goal',
+      icon: './assets/icons/sports_soccer.svg'
+    },
+    {
+      action: 'yellow',
+      label: 'Cartao amarelo',
+      className: 'btn-yellow-card',
+      icon: './assets/icons/crop_portrait.svg'
+    },
+    {
+      action: 'red',
+      label: 'Cartao vermelho',
+      className: 'btn-red-card',
+      icon: './assets/icons/crop_portrait.svg'
+    },
+    {
+      action: 'substitution',
+      label: 'Substituicao',
+      className: 'btn-substitution',
+      icon: './assets/icons/sync_alt.svg'
+    }
+  ];
+
+  actionButtons.forEach((config) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `btn btn-icon player-action ${config.className}`;
+    button.setAttribute('title', config.label);
+    button.setAttribute('aria-label', config.label);
+    button.dataset.team = team;
+    button.dataset.slot = String(slotIndex);
+    button.dataset.action = config.action;
+    const icon = document.createElement('img');
+    icon.src = config.icon;
+    icon.alt = '';
+    icon.setAttribute('aria-hidden', 'true');
+    button.appendChild(icon);
+    actions.appendChild(button);
+  });
+
+  const info = document.createElement('div');
+  info.className = 'player-info';
+  const nameRow = document.createElement('div');
+  nameRow.className = 'player-name-row';
+  if (isAway) {
+    nameRow.appendChild(name);
+    nameRow.appendChild(number);
+  } else {
+    nameRow.appendChild(number);
+    nameRow.appendChild(name);
+  }
+  nameRow.appendChild(badges);
+  info.appendChild(nameRow);
+
+  if (isAway) {
+    row.classList.add('away');
+    row.appendChild(actions);
+    row.appendChild(info);
+  } else {
+    row.appendChild(info);
+    row.appendChild(actions);
+  }
+
+  return row;
+}
+
+function buildOutRow(player, isAway) {
+  const row = document.createElement('div');
+  row.className = 'player-row out-row';
+
+  const number = document.createElement('span');
+  number.className = 'player-number';
+  number.textContent = formatPlayerNumber(player.number);
+
+  const name = document.createElement('span');
+  name.className = 'player-name';
+  name.textContent = player.name || 'Sem nome';
+
+  const info = document.createElement('div');
+  info.className = 'player-info';
+  const nameRow = document.createElement('div');
+  nameRow.className = 'player-name-row';
+  if (isAway) {
+    nameRow.appendChild(name);
+    nameRow.appendChild(number);
+  } else {
+    nameRow.appendChild(number);
+    nameRow.appendChild(name);
+  }
+  info.appendChild(nameRow);
+
+  if (isAway) {
+    row.classList.add('away');
+  }
+  row.appendChild(info);
+  return row;
+}
+
 export function cacheDom() {
   if (domCache) {
     return domCache;
@@ -64,6 +220,17 @@ export function cacheDom() {
     btnHomeRosterSave: document.getElementById('btnHomeRosterSave'),
     btnAwayRosterClear: document.getElementById('btnAwayRosterClear'),
     btnAwayRosterSave: document.getElementById('btnAwayRosterSave'),
+    homePlayersList: document.getElementById('homePlayersList'),
+    awayPlayersList: document.getElementById('awayPlayersList'),
+    historyList: document.getElementById('historyList'),
+    btnHistoryClear: document.getElementById('btnHistoryClear'),
+    modalSubstitution: document.getElementById('modalSubstitution'),
+    subOutNumber: document.getElementById('subOutNumber'),
+    subOutName: document.getElementById('subOutName'),
+    subInNumber: document.getElementById('subInNumber'),
+    subInName: document.getElementById('subInName'),
+    btnSubCancel: document.getElementById('btnSubCancel'),
+    btnSubConfirm: document.getElementById('btnSubConfirm'),
     modalMask: document.getElementById('modalMask'),
     modalTimerSet: document.getElementById('modalTimerSet'),
     timerSetMinutes: document.getElementById('timerSetMinutes'),
@@ -158,7 +325,7 @@ export function renderAll(state) {
       if (!input) {
         return;
       }
-      input.value = state.teams.home.players[index]?.name || '';
+      input.value = state.teams.home.slots[index]?.name || '';
     });
   }
 
@@ -167,9 +334,72 @@ export function renderAll(state) {
       if (!input) {
         return;
       }
-      input.value = state.teams.away.players[index]?.name || '';
+      input.value = state.teams.away.slots[index]?.name || '';
     });
   }
+
+  renderPlayersActions(state);
+  renderHistory(state);
+}
+
+export function renderPlayersActions(state) {
+  const dom = cacheDom();
+  if (!dom.homePlayersList || !dom.awayPlayersList) {
+    return;
+  }
+
+  const homeFragment = document.createDocumentFragment();
+  state.teams.home.slots.forEach((player, index) => {
+    homeFragment.appendChild(buildPlayerRow({ team: 'home', slotIndex: index, player, isAway: false }));
+  });
+  if (state.teams.home.out.length) {
+    const outTitle = document.createElement('div');
+    outTitle.className = 'player-subtitle';
+    outTitle.textContent = 'Sairam';
+    homeFragment.appendChild(outTitle);
+    state.teams.home.out.forEach((player) => {
+      homeFragment.appendChild(buildOutRow(player, false));
+    });
+  }
+  dom.homePlayersList.replaceChildren(homeFragment);
+
+  const awayFragment = document.createDocumentFragment();
+  state.teams.away.slots.forEach((player, index) => {
+    awayFragment.appendChild(buildPlayerRow({ team: 'away', slotIndex: index, player, isAway: true }));
+  });
+  if (state.teams.away.out.length) {
+    const outTitle = document.createElement('div');
+    outTitle.className = 'player-subtitle';
+    outTitle.textContent = 'Sairam';
+    awayFragment.appendChild(outTitle);
+    state.teams.away.out.forEach((player) => {
+      awayFragment.appendChild(buildOutRow(player, true));
+    });
+  }
+  dom.awayPlayersList.replaceChildren(awayFragment);
+}
+
+export function renderHistory(state) {
+  const dom = cacheDom();
+  if (!dom.historyList) {
+    return;
+  }
+  const fragment = document.createDocumentFragment();
+  const items = state.history.slice(0, 20);
+  items.forEach((entry) => {
+    const row = document.createElement('div');
+    row.className = `history-row history-${entry.type}`;
+    const minute = document.createElement('span');
+    minute.className = 'history-minute';
+    minute.textContent = entry.minute ?? '—';
+    const text = document.createElement('span');
+    text.className = 'history-text';
+    text.textContent = entry.label || '';
+    row.appendChild(minute);
+    row.appendChild(text);
+    fragment.appendChild(row);
+  });
+  dom.historyList.replaceChildren(fragment);
 }
 
 export function setBusy(isBusy) {
@@ -280,6 +510,33 @@ export function bindMainActions(handlers = {}) {
   }
   if (dom.btnAwayRosterSave && handlers.onAwayRosterSave) {
     dom.btnAwayRosterSave.addEventListener('click', handlers.onAwayRosterSave);
+  }
+  if (dom.btnHistoryClear && handlers.onHistoryClear) {
+    dom.btnHistoryClear.addEventListener('click', handlers.onHistoryClear);
+  }
+  if (dom.btnSubCancel && handlers.onSubCancel) {
+    dom.btnSubCancel.addEventListener('click', handlers.onSubCancel);
+  }
+  if (dom.btnSubConfirm && handlers.onSubConfirm) {
+    dom.btnSubConfirm.addEventListener('click', handlers.onSubConfirm);
+  }
+  if (dom.homePlayersList && handlers.onPlayerAction) {
+    dom.homePlayersList.addEventListener('click', (event) => {
+      const target = event.target.closest('button[data-action]');
+      if (!target) {
+        return;
+      }
+      handlers.onPlayerAction(target.dataset);
+    });
+  }
+  if (dom.awayPlayersList && handlers.onPlayerAction) {
+    dom.awayPlayersList.addEventListener('click', (event) => {
+      const target = event.target.closest('button[data-action]');
+      if (!target) {
+        return;
+      }
+      handlers.onPlayerAction(target.dataset);
+    });
   }
 }
 

@@ -1,32 +1,40 @@
-function createPlayer() {
+function createPlayer({ slot, number, name, isSubstitute = false } = {}) {
   return {
-    number: '',
-    name: '',
+    id: crypto.randomUUID(),
+    slot,
+    number,
+    name: name || '',
     goals: 0,
     yellowCards: 0,
     redCard: false,
     substitutedOut: false,
-    swapIconSide: 'left',
-    cardIconSide: 'left'
+    isSubstitute,
+    swapIconSide: 'default',
+    cardIconSide: 'default'
   };
 }
 
 function createTeam() {
+  const slots = Array.from({ length: 11 }, (_, index) =>
+    createPlayer({ slot: index + 1, number: index + 1 })
+  );
   return {
     name: '',
     sigla: '',
     coach: '',
     logo: '',
-    players: Array.from({ length: 11 }, () => createPlayer())
+    slots,
+    out: [],
+    substitutionSlots: Array.from({ length: 11 }, () => false)
   };
 }
 
 export function createInitialGameState() {
   return {
-    version: '0.3.0',
+    version: '0.4.0',
     meta: {
       skin: '',
-      sceneName: ''
+      sceneName: 'Match Center'
     },
     teams: {
       home: createTeam(),
