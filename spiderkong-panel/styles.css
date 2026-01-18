@@ -218,6 +218,9 @@ body {
   color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .btn-primary {
@@ -253,6 +256,11 @@ body {
   color: var(--text);
 }
 
+.pill-icon {
+  width: 14px;
+  height: 14px;
+}
+
 .pill-neutral {
   background: var(--secondary);
 }
@@ -265,6 +273,37 @@ body {
 .pill-warning {
   background: var(--warning);
   color: #1a1202;
+}
+
+.pill-danger {
+  background: var(--danger);
+  color: #fff3f3;
+}
+
+.pill-info {
+  background: var(--primary);
+  color: #f4f7ff;
+}
+
+.pill-neutral .pill-icon,
+.pill-info .pill-icon,
+.pill-danger .pill-icon {
+  filter: brightness(0) invert(1);
+}
+
+.pill-success .pill-icon,
+.pill-warning .pill-icon {
+  filter: brightness(0) saturate(100%);
+}
+
+.btn-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.btn.is-active {
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .hidden {

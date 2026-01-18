@@ -22,9 +22,12 @@
           </div>
           <div class="control-group">
             <label>Status WS</label>
-            <span id="wsStatusPill" class="pill pill-neutral">Desconectado</span>
+            <span id="wsStatusPill" class="pill pill-neutral">
+              <img id="wsStatusIcon" class="pill-icon" alt="" aria-hidden="true" />
+              <span id="wsStatusText"></span>
+            </span>
           </div>
-          <button id="btnSyncObs" class="btn btn-primary">Sync OBS</button>
+          <button id="btnSyncObs" class="btn btn-primary">Tentar Conectar</button>
         </div>
       </header>
 
@@ -273,9 +276,18 @@
       <div class="logger-header">
         <strong>Logger</strong>
         <div class="logger-actions">
-          <button id="btnLogCopy" class="btn btn-ghost">Copiar</button>
-          <button id="btnLogClear" class="btn btn-ghost">Limpar</button>
-          <button id="btnLowPower" class="btn btn-ghost">Low Power</button>
+          <button id="btnLogCopy" class="btn btn-ghost">
+            <img class="btn-icon" src="./assets/icons/content_copy.svg" alt="" aria-hidden="true" />
+            <span>Copiar</span>
+          </button>
+          <button id="btnLogClear" class="btn btn-ghost">
+            <img class="btn-icon" src="./assets/icons/delete.svg" alt="" aria-hidden="true" />
+            <span>Limpar</span>
+          </button>
+          <button id="btnLowPower" class="btn btn-ghost">
+            <img class="btn-icon" src="./assets/icons/energy_savings_leaf.svg" alt="" aria-hidden="true" />
+            <span>Low Power</span>
+          </button>
         </div>
       </div>
       <div id="loggerLines" class="logger-lines"></div>
