@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpiderKong - Painel de Controle</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- HEADER -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">
+          <svg class="logo-icon" viewBox="0 0 40 40" fill="currentColor">
+            <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2" fill="none"/>
+            <circle cx="20" cy="20" r="8" fill="currentColor"/>
+          </svg>
+          <span class="logo-text">SpiderKong</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="field-group">
+          <label class="label">CENA</label>
+          <select class="select" id="sceneDropdown">
+            <option value="Match Center">Match Center</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="label">SKIN</label>
+          <select class="select" id="skinDropdown">
+            <option value="champions">Champions League</option>
+            <option value="libertadores">Libertadores</option>
+            <option value="brasileiraocopa">Brasileirao/Copa</option>
+            <option value="generico">Generico</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="connection-status" id="connectionStatus">
+          <span class="status-dot"></span>
+          <span class="status-text">Desconectado</span>
+        </div>
+        <button class="btn btn-ghost btn-icon" id="btnSettings" title="CONFIGURACOES">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v4m0 14v4m11-11h-4M5 12H1m18.07-7.07l-2.83 2.83M8.76 15.24l-2.83 2.83m0-12.02l2.83 2.83m6.48 6.48l2.83 2.83"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- MAIN CONTENT -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <main class="main">
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- SECAO: TIMES -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <section class="section" id="sectionTeams">
+        <div class="section-header">
+          <h2 class="section-title">TIMES</h2>
+        </div>
+
+        <div class="teams-row">
+          <!-- Time da Casa -->
+          <div class="team-card">
+            <div class="team-selector">
+              <div class="team-logo-preview">
+                <img id="homeLogoPreview" src="" alt="Escudo">
+                <div class="team-logo-placeholder" id="homeLogoPlaceholder">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 2L2 7v6.5c0 5.5 4 10 10 10.5 6-.5 10-5 10-10.5V7l-10-5z"/>
+                  </svg>
+                </div>
+              </div>
+
+              <div class="team-selector-fields">
+                <div class="field-group">
+                  <label class="label">TIME</label>
+                  <select class="select" id="homeTeamDropdown">
+                    <option value="">Selecionar Time...</option>
+                  </select>
+                </div>
+
+                <div class="field-row">
+                  <div class="field-group field-group-flex">
+                    <label class="label">NOME</label>
+                    <input type="text" class="input" id="homeName" placeholder="Nome do time">
+                  </div>
+
+                  <div class="field-group field-group-small">
+                    <label class="label">SIGLA</label>
+                    <input type="text" class="input input-sm" id="homeSigla" placeholder="SIG" maxlength="4">
+                  </div>
+                </div>
+
+                <div class="field-group">
+                  <label class="label">TECNICO</label>
+                  <input type="text" class="input" id="homeCoach" placeholder="Nome do tecnico">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- VS Separator -->
+          <div class="vs-separator">VS</div>
+
+          <!-- Time Visitante -->
+          <div class="team-card team-card-away">
+            <div class="team-selector team-selector-away">
+              <div class="team-selector-fields">
+                <div class="field-group">
+                  <label class="label">TIME</label>
+                  <select class="select" id="awayTeamDropdown">
+                    <option value="">Selecionar Time...</option>
+                  </select>
+                </div>
+
+                <div class="field-row field-row-reverse">
+                  <div class="field-group field-group-small">
+                    <label class="label">SIGLA</label>
+                    <input type="text" class="input input-sm text-right" id="awaySigla" placeholder="SIG" maxlength="4">
+                  </div>
+
+                  <div class="field-group field-group-flex">
+                    <label class="label">NOME</label>
+                    <input type="text" class="input text-right" id="awayName" placeholder="Nome do time">
+                  </div>
+                </div>
+
+                <div class="field-group">
+                  <label class="label">TECNICO</label>
+                  <input type="text" class="input text-right" id="awayCoach" placeholder="Nome do tecnico">
+                </div>
+              </div>
+
+              <div class="team-logo-preview">
+                <img id="awayLogoPreview" src="" alt="Escudo">
+                <div class="team-logo-placeholder" id="awayLogoPlaceholder">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 2L2 7v6.5c0 5.5 4 10 10 10.5 6-.5 10-5 10-10.5V7l-10-5z"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- SECAO: CADASTRO DE ESCALACOES -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <section class="section section-collapsible" id="sectionRoster">
+        <div class="section-header section-header-collapsible" onclick="toggleSection('sectionRoster')">
+          <h2 class="section-title">CADASTRO DE ESCALACOES</h2>
+          <button class="btn btn-icon btn-ghost collapse-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="section-content" id="sectionRosterContent">
+          <div class="teams-grid">
+            <!-- Time da Casa -->
+            <div class="team-roster">
+              <h3 class="team-roster-title">TIME DA CASA</h3>
+
+              <div class="roster-group">
+                <h4 class="roster-group-title">TITULARES</h4>
+                <div class="roster-list" id="homePlayersList">
+                  <!-- Gerado via JS: 11 inputs -->
+                </div>
+              </div>
+
+              <div class="roster-actions">
+                <button class="btn btn-ghost" onclick="clearRoster('home')">LIMPAR</button>
+                <button class="btn btn-primary" onclick="savePlayerNames('home')">SALVAR</button>
+              </div>
+            </div>
+
+            <!-- Time Visitante -->
+            <div class="team-roster team-roster-away">
+              <h3 class="team-roster-title">TIME VISITANTE</h3>
+
+              <div class="roster-group">
+                <h4 class="roster-group-title">TITULARES</h4>
+                <div class="roster-list roster-list-away" id="awayPlayersList">
+                  <!-- Gerado via JS: 11 inputs (alinhados a direita) -->
+                </div>
+              </div>
+
+              <div class="roster-actions">
+                <button class="btn btn-ghost" onclick="clearRoster('away')">LIMPAR</button>
+                <button class="btn btn-primary" onclick="savePlayerNames('away')">SALVAR</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- SECAO: PLACAR -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <section class="section" id="sectionScore">
+        <div class="section-header">
+          <h2 class="section-title">PLACAR</h2>
+        </div>
+
+        <div class="score-container">
+          <!-- Placar Principal -->
+          <div class="score-main">
+            <div class="score-team">
+              <button class="btn btn-icon btn-ghost" onclick="onScoreMinus('home')" title="DIMINUIR">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14"/>
+                </svg>
+              </button>
+              <span class="score-value display-large" id="scoreHome">0</span>
+              <button class="btn btn-icon btn-primary" onclick="onScorePlus('home')" title="AUMENTAR">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14m-7-7h14"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="score-separator">:</div>
+
+            <div class="score-team">
+              <button class="btn btn-icon btn-ghost" onclick="onScoreMinus('away')" title="DIMINUIR">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14"/>
+                </svg>
+              </button>
+              <span class="score-value display-large" id="scoreAway">0</span>
+              <button class="btn btn-icon btn-primary" onclick="onScorePlus('away')" title="AUMENTAR">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14m-7-7h14"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Placar Agregado -->
+          <div class="score-extra">
+            <div class="score-extra-item">
+              <label class="label">AGREGADO</label>
+              <div class="score-extra-inputs">
+                <input type="number" class="input input-sm" id="aggregateHome" value="0" min="0">
+                <span class="score-extra-separator">x</span>
+                <input type="number" class="input input-sm" id="aggregateAway" value="0" min="0">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- SECAO: CRONOMETRO -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <section class="section" id="sectionTimer">
+        <div class="section-header">
+          <h2 class="section-title">CRONOMETRO</h2>
+        </div>
+
+        <div class="timer-container">
+          <div class="timer-display">
+            <span class="timer-value display-large" id="timerDisplay">00:00</span>
+          </div>
+
+          <div class="timer-controls">
+            <button class="btn btn-success" id="btnTimerPlay" onclick="Timer.start()" title="INICIAR">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              <span>INICIAR</span>
+            </button>
+            <button class="btn btn-warning" id="btnTimerPause" onclick="Timer.pause()" title="PAUSAR">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="4" width="4" height="16"/>
+                <rect x="14" y="4" width="4" height="16"/>
+              </svg>
+              <span>PAUSAR</span>
+            </button>
+            <button class="btn btn-ghost" id="btnTimerReset" onclick="Timer.reset()" title="ZERAR">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+              </svg>
+              <span>ZERAR</span>
+            </button>
+            <button class="btn btn-ghost" id="btnTimerSet" onclick="openTimerModal()" title="DEFINIR">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+              <span>DEFINIR</span>
+            </button>
+          </div>
+
+          <div class="timer-periods">
+            <label class="label">PERIODO</label>
+            <div class="period-buttons">
+              <button class="btn btn-ghost period-btn active" data-period="1T" onclick="setPeriod('1T')">1T</button>
+              <button class="btn btn-ghost period-btn" data-period="INT" onclick="setPeriod('INT')">INT</button>
+              <button class="btn btn-ghost period-btn" data-period="2T" onclick="setPeriod('2T')">2T</button>
+              <button class="btn btn-ghost period-btn" data-period="PRO" onclick="setPeriod('PRO')">PRORROG.</button>
+              <button class="btn btn-ghost period-btn" data-period="PEN" onclick="setPeriod('PEN')">PENALTIS</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- SECAO: ACOES DE JOGO -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <section class="section" id="sectionActions">
+        <div class="section-header">
+          <h2 class="section-title">ACOES DE JOGO</h2>
+        </div>
+
+        <div class="actions-container">
+          <!-- Time da Casa -->
+          <div class="actions-team">
+            <h3 class="actions-team-title" id="homeActionsTitle">TIME DA CASA</h3>
+            <div class="actions-list" id="homeActionsList">
+              <!-- Gerado via JS -->
+            </div>
+          </div>
+
+          <!-- Time Visitante -->
+          <div class="actions-team actions-team-away">
+            <h3 class="actions-team-title" id="awayActionsTitle">TIME VISITANTE</h3>
+            <div class="actions-list actions-list-away" id="awayActionsList">
+              <!-- Gerado via JS -->
+            </div>
+          </div>
+        </div>
+
+        <div class="actions-legend">
+          <span class="legend-item">
+            <span class="legend-icon legend-icon-goal"></span>
+            GOL
+          </span>
+          <span class="legend-item">
+            <span class="legend-icon legend-icon-yellow"></span>
+            AMARELO
+          </span>
+          <span class="legend-item">
+            <span class="legend-icon legend-icon-red"></span>
+            VERMELHO
+          </span>
+          <span class="legend-item">
+            <span class="legend-icon legend-icon-sub"></span>
+            SUBSTITUICAO
+          </span>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- SECAO: PENALTIS -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <section class="section" id="sectionPenalties" style="display: none;">
+        <div class="section-header">
+          <h2 class="section-title">PENALTIS</h2>
+        </div>
+
+        <div class="penalties-grid">
+          <div class="penalties-team">
+            <h3 class="penalties-team-title" id="homePenaltiesTitle">TIME DA CASA</h3>
+            <div class="penalties-markers" id="homePenalties">
+              <button class="penalty-marker" data-index="0" onclick="cyclePenalty('home', 0)"></button>
+              <button class="penalty-marker" data-index="1" onclick="cyclePenalty('home', 1)"></button>
+              <button class="penalty-marker" data-index="2" onclick="cyclePenalty('home', 2)"></button>
+              <button class="penalty-marker" data-index="3" onclick="cyclePenalty('home', 3)"></button>
+              <button class="penalty-marker" data-index="4" onclick="cyclePenalty('home', 4)"></button>
+            </div>
+            <div class="penalties-score">
+              Convertidos: <span id="homePenaltyScore">0</span>
+            </div>
+          </div>
+
+          <div class="penalties-team">
+            <h3 class="penalties-team-title" id="awayPenaltiesTitle">TIME VISITANTE</h3>
+            <div class="penalties-markers" id="awayPenalties">
+              <button class="penalty-marker" data-index="0" onclick="cyclePenalty('away', 0)"></button>
+              <button class="penalty-marker" data-index="1" onclick="cyclePenalty('away', 1)"></button>
+              <button class="penalty-marker" data-index="2" onclick="cyclePenalty('away', 2)"></button>
+              <button class="penalty-marker" data-index="3" onclick="cyclePenalty('away', 3)"></button>
+              <button class="penalty-marker" data-index="4" onclick="cyclePenalty('away', 4)"></button>
+            </div>
+            <div class="penalties-score">
+              Convertidos: <span id="awayPenaltyScore">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="penalties-actions">
+          <button class="btn btn-ghost" onclick="resetPenalties()">LIMPAR PENALTIS</button>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- SECAO: HISTORICO -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <section class="section" id="sectionHistory">
+        <div class="section-header">
+          <h2 class="section-title">HISTORICO</h2>
+          <button class="btn btn-ghost btn-sm" onclick="clearHistory()">LIMPAR</button>
+        </div>
+
+        <div class="history-container">
+          <div class="history-list" id="historyList">
+            <div class="history-empty">Nenhum evento registrado</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <!-- SECAO: ACOES GERAIS -->
+      <!-- ═════════════════════════════════════════════════════════════════ -->
+      <section class="section" id="sectionGeneralActions">
+        <div class="section-header">
+          <h2 class="section-title">ACOES GERAIS</h2>
+        </div>
+
+        <div class="general-actions">
+          <button class="btn btn-primary" onclick="syncAllToObs()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"/>
+              <path d="M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            SINCRONIZAR COM OBS
+          </button>
+          <button class="btn btn-warning" onclick="resetPartial()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+            </svg>
+            RESET PLACAR
+          </button>
+          <button class="btn btn-danger" onclick="confirmResetTotal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            RESET TOTAL
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- MODALS -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Modal: Substituicao -->
+    <div class="modal-mask" id="modalSubstitution" style="display: none;">
+      <div class="modal-content modal-substitution">
+        <h2 class="modal-title">SUBSTITUICAO</h2>
+
+        <div class="substitution-visual">
+          <div class="sub-player sub-player-out">
+            <div class="sub-player-label">SAI</div>
+            <div class="sub-player-number" id="subOutNumber">#0</div>
+            <div class="sub-player-name" id="subOutName">Jogador</div>
+          </div>
+
+          <div class="sub-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14m-7-7l7 7-7 7"/>
+            </svg>
+          </div>
+
+          <div class="sub-player sub-player-in">
+            <div class="sub-player-label">ENTRA</div>
+            <div class="sub-input-group">
+              <label class="label">NUMERO</label>
+              <input type="number" class="input input-sm" id="subInNumber" placeholder="N" min="1" max="99">
+            </div>
+            <div class="sub-input-group">
+              <label class="label">NOME DO JOGADOR</label>
+              <input type="text" class="input" id="subInName" placeholder="Digite o nome">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal()">CANCELAR</button>
+          <button class="btn btn-primary" onclick="confirmSubstitution()">CONFIRMAR</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Definir Tempo -->
+    <div class="modal-mask" id="modalTimer" style="display: none;">
+      <div class="modal-content modal-timer">
+        <h2 class="modal-title">DEFINIR TEMPO</h2>
+
+        <div class="timer-set-inputs">
+          <div class="timer-set-group">
+            <label class="label">MINUTOS</label>
+            <input type="number" class="input input-lg" id="timerSetMinutes" value="0" min="0" max="999">
+          </div>
+          <span class="timer-set-separator">:</span>
+          <div class="timer-set-group">
+            <label class="label">SEGUNDOS</label>
+            <input type="number" class="input input-lg" id="timerSetSeconds" value="0" min="0" max="59">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal()">CANCELAR</button>
+          <button class="btn btn-primary" onclick="confirmTimerSet()">CONFIRMAR</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Confirmacao Reset Total -->
+    <div class="modal-mask" id="modalConfirmReset" style="display: none;">
+      <div class="modal-content modal-confirm">
+        <h2 class="modal-title">CONFIRMAR RESET</h2>
+        <p class="modal-message">Tem certeza que deseja resetar TODOS os dados da partida? Esta acao nao pode ser desfeita.</p>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal()">CANCELAR</button>
+          <button class="btn btn-danger" onclick="resetTotal()">CONFIRMAR RESET</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Configuracoes -->
+    <div class="modal-mask" id="modalSettings" style="display: none;">
+      <div class="modal-content modal-settings">
+        <h2 class="modal-title">CONFIGURACOES</h2>
+
+        <div class="settings-group">
+          <label class="label">ENDERECO DO OBS WEBSOCKET</label>
+          <input type="text" class="input" id="settingsWsUrl" placeholder="ws://localhost:4455">
+        </div>
+
+        <div class="settings-group">
+          <label class="label">SENHA (se configurada)</label>
+          <input type="password" class="input" id="settingsWsPassword" placeholder="Deixe em branco se nao houver">
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal()">CANCELAR</button>
+          <button class="btn btn-primary" onclick="saveSettings()">SALVAR</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TOAST NOTIFICATIONS -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="toast-container" id="toastContainer"></div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="modules/game-state.js"></script>
+  <script src="modules/obs-client.js"></script>
+  <script src="modules/timer.js"></script>
+  <script src="modules/skin-manager.js"></script>
+  <script src="modules/sync.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
