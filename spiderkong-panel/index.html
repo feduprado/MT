@@ -283,12 +283,26 @@
         <div class="grid-two">
           <div id="homePlayersActions" class="card">
             <h3 class="card-title">Casa</h3>
-            <div class="placeholder-list"></div>
+            <div class="players-header">
+              <span class="name-label">Nº / Nome</span>
+              <span class="actions-label">Ações</span>
+            </div>
+            <div id="homePlayersList" class="players-list"></div>
           </div>
           <div id="awayPlayersActions" class="card">
             <h3 class="card-title">Visitante</h3>
-            <div class="placeholder-list"></div>
+            <div class="players-header away">
+              <span class="actions-label">Ações</span>
+              <span class="name-label">Nome / Nº</span>
+            </div>
+            <div id="awayPlayersList" class="players-list"></div>
           </div>
+        </div>
+        <div class="players-legend">
+          <span class="legend-item"><span class="legend-swatch legend-goal"></span>Gol</span>
+          <span class="legend-item"><span class="legend-swatch legend-yellow"></span>Cartão amarelo</span>
+          <span class="legend-item"><span class="legend-swatch legend-red"></span>Cartão vermelho</span>
+          <span class="legend-item"><span class="legend-swatch legend-swap"></span>Substituição</span>
         </div>
       </section>
 
@@ -341,8 +355,14 @@
         </div>
       </div>
       <div class="button-row">
-        <button id="btnSubCancel" class="btn btn-secondary">Cancelar</button>
-        <button id="btnSubConfirm" class="btn btn-primary">Confirmar</button>
+        <button id="btnSubCancel" class="btn btn-secondary">
+          <img src="./assets/icons/close.svg" alt="" aria-hidden="true" />
+          CANCELAR
+        </button>
+        <button id="btnSubConfirm" class="btn btn-primary">
+          <img src="./assets/icons/check.svg" alt="" aria-hidden="true" />
+          CONFIRMAR
+        </button>
       </div>
     </div>
 
