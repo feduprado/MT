@@ -1,21 +1,73 @@
+/**
+ * SpiderKong Panel - Main Application
+ * Complete broadcast control panel for OBS integration
+ * Version 2.0.0
+ */
+
 (() => {
   "use strict";
-  console.log("[SpiderKong] app.js loaded");
 
-  // Prevent double load
+  // Prevent double initialization
   if (window.__SPIDERKONG_LOADED__) return;
   window.__SPIDERKONG_LOADED__ = true;
 
-  // ============================================================
-  // DOM HELPER
-  // ============================================================
-  const $ = (id) => document.getElementById(id);
+  console.log("[SpiderKong] Initializing v2.0.0");
 
+  // ===========================================
+  // CONFIGURATION
+  // ===========================================
+  const CFG = window.CONFIG || {};
+
+  // ===========================================
+  // DOM HELPERS
+  // ===========================================
+  const $ = (id) => document.getElementById(id);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
+  // ===========================================
+  // UTILITIES
+  // ===========================================
+  const now = () => new Date().toLocaleTimeString("pt-BR", { hour12: false });
+
+  const log = (msg, data = null) => {
+    const line = `[${now()}] ${msg}`;
+    if (data) {
+      console.log(line, data);
+    } else {
+      console.log(line);
+    }
+  };
+
+  const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+
+  const pad2 = (n) => String(n).padStart(2, "0");
+
+  const formatTime = (ms) => {
+    const totalSec = Math.floor(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${pad2(m)}:${pad2(s)}`;
+  };
+
+  const parseTime = (str) => {
+    const parts = (str || "").split(":");
+    if (parts.length !== 2) return 0;
+    const m = parseInt(parts[0], 10) || 0;
+    const s = parseInt(parts[1], 10) || 0;
+    return (m * 60 + s) * 1000;
+  };
+
+  const uuid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+
+  // ===========================================
+  // DOM ELEMENTS CACHE
+  // ===========================================
   const el = {
     // Header
     sceneSelect: $("sceneSelect"),
     skinSelect: $("skinSelect"),
     pillWs: $("pillWs"),
+    pillWsText: $("pillWsText"),
 
     // Teams
     homeTeamSelect: $("homeTeamSelect"),
@@ -26,12 +78,18 @@
     awayTeamSigla: $("awayTeamSigla"),
     homeCoach: $("homeCoach"),
     awayCoach: $("awayCoach"),
+    homeLogoPreview: $("homeLogoPreview"),
+    awayLogoPreview: $("awayLogoPreview"),
     btnApplyHome: $("btnApplyHome"),
     btnApplyAway: $("btnApplyAway"),
 
     // Score
     scoreHome: $("scoreHome"),
     scoreAway: $("scoreAway"),
+    scoreSiglaHome: $("scoreSiglaHome"),
+    scoreSiglaAway: $("scoreSiglaAway"),
+    scoreNameHome: $("scoreNameHome"),
+    scoreNameAway: $("scoreNameAway"),
     btnScoreHomeMinus: $("btnScoreHomeMinus"),
     btnScoreHomePlus: $("btnScoreHomePlus"),
     btnScoreAwayMinus: $("btnScoreAwayMinus"),
@@ -55,38 +113,58 @@
     btnTimerSet: $("btnTimerSet"),
     btnTimerStart: $("btnTimerStart"),
     btnTimerPause: $("btnTimerPause"),
-    btnTimerResume: $("btnTimerResume"),
     btnTimerReset: $("btnTimerReset"),
-    btnStatus1T: $("btnStatus1T"),
-    btnStatus2T: $("btnStatus2T"),
-    btnStatusInt: $("btnStatusInt"),
-    btnStatusPro: $("btnStatusPro"),
-    btnStatusPen: $("btnStatusPen"),
+    btnPeriod1T: $("btnPeriod1T"),
+    btnPeriod2T: $("btnPeriod2T"),
+    btnPeriodInt: $("btnPeriodInt"),
+    btnPeriodPro: $("btnPeriodPro"),
+    btnPeriodPen: $("btnPeriodPen"),
 
     // Penalties
-    penaltiesPanel: $("penaltiesPanel"),
+    penaltiesCard: $("penaltiesCard"),
     penTagHome: $("penTagHome"),
     penTagAway: $("penTagAway"),
     penListHome: $("penListHome"),
     penListAway: $("penListAway"),
-    btnPenaltyAdd: $("btnPenaltyAdd"),
+    penScoreHome: $("penScoreHome"),
+    penScoreAway: $("penScoreAway"),
     btnPenaltyReset: $("btnPenaltyReset"),
 
     // Roster
     btnToggleRoster: $("btnToggleRoster"),
     rosterBody: $("rosterBody"),
-    rosterHomeList: $("rosterHomeList"),
-    rosterAwayList: $("rosterAwayList"),
+    rosterCoachHome: $("rosterCoachHome"),
+    rosterCoachAway: $("rosterCoachAway"),
+    rosterInputsHome: $("rosterInputsHome"),
+    rosterInputsAway: $("rosterInputsAway"),
     btnApplyRoster: $("btnApplyRoster"),
+    btnClearRoster: $("btnClearRoster"),
+
+    // Players in field
+    btnTogglePlayers: $("btnTogglePlayers"),
+    playersBody: $("playersBody"),
+    playersListHome: $("playersListHome"),
+    playersListAway: $("playersListAway"),
+
+    // History
+    btnToggleHistory: $("btnToggleHistory"),
+    historyBody: $("historyBody"),
+    historyList: $("historyList"),
+    btnClearHistory: $("btnClearHistory"),
 
     // Actions
     btnSyncObs: $("btnSyncObs"),
     btnReconnect: $("btnReconnect"),
+    btnResetPartial: $("btnResetPartial"),
+    btnResetTotal: $("btnResetTotal"),
 
     // Player Modal
     playerModal: $("playerModal"),
     btnPlayerModalClose: $("btnPlayerModalClose"),
-    playerModalInfo: $("playerModalInfo"),
+    playerModalNumber: $("playerModalNumber"),
+    playerModalName: $("playerModalName"),
+    playerModalTeam: $("playerModalTeam"),
+    playerModalStats: $("playerModalStats"),
     btnPlayerGoal: $("btnPlayerGoal"),
     btnPlayerYellow: $("btnPlayerYellow"),
     btnPlayerRed: $("btnPlayerRed"),
@@ -95,29 +173,49 @@
     // Sub Modal
     subModal: $("subModal"),
     btnSubModalClose: $("btnSubModalClose"),
-    subSearch: $("subSearch"),
-    subList: $("subList"),
+    subModalOutName: $("subModalOutName"),
+    subInNumber: $("subInNumber"),
+    subInName: $("subInName"),
     btnSubConfirm: $("btnSubConfirm")
   };
 
-  // ============================================================
-  // LOGGING
-  // ============================================================
-  const now = () => new Date().toLocaleTimeString("pt-BR", { hour12: false });
-  const log = (msg, obj) => {
-    const line = `[${now()}] ${msg}` + (obj ? ` ${JSON.stringify(obj)}` : "");
-    console.log(line);
-  };
-
-  // ============================================================
-  // CONFIG
-  // ============================================================
-  const CFG = window.CONFIG || {};
-
-  // ============================================================
+  // ===========================================
   // STATE
-  // ============================================================
+  // ===========================================
+  function createPlayer(slot, number = null, name = "") {
+    return {
+      id: uuid(),
+      slot,
+      number: number !== null ? number : slot,
+      name,
+      goals: 0,
+      yellowCards: 0,
+      redCard: false,
+      substitutedOut: false,
+      isEntered: false, // true for players who entered via substitution
+      swapIconSide: "left",
+      cardIconSide: "left"
+    };
+  }
+
+  function createTeam() {
+    return {
+      name: "",
+      sigla: "",
+      coach: "",
+      logo: "",
+      players: Array.from({ length: 11 }, (_, i) => createPlayer(i + 1))
+    };
+  }
+
+  function createPenalties() {
+    return Array.from({ length: 5 }, () => "empty");
+  }
+
   const state = {
+    // Version for storage compatibility
+    version: CFG.storage?.version || "2.0.0",
+
     // WebSocket
     ws: null,
     connected: false,
@@ -130,61 +228,58 @@
     currentScene: "",
     currentSkin: CFG.defaultSkin || "generico",
     availableScenes: [],
+    discoveredSkins: [],
 
     // Teams
     teams: {
-      home: { name: "", sigla: "", coach: "", logo: "" },
-      away: { name: "", sigla: "", coach: "", logo: "" }
+      home: createTeam(),
+      away: createTeam()
     },
 
     // Score
-    score: { home: 0, away: 0 },
+    score: {
+      home: 0,
+      away: 0
+    },
 
     // Aggregate
-    aggregate: { enabled: false, home: 0, away: 0 },
+    aggregate: {
+      enabled: false,
+      home: 0,
+      away: 0
+    },
 
     // Timer
     timer: {
       running: false,
       elapsedMs: 0,
       period: "1T",
-      handle: null,
-      startedAt: null
+      startedAt: null,
+      handle: null
     },
 
     // Penalties
     penalties: {
       active: false,
-      home: [],
-      away: []
+      home: createPenalties(),
+      away: createPenalties()
     },
 
-    // Roster
-    roster: {
-      home: Array.from({ length: 11 }, (_, i) => createPlayer(i + 1)),
-      away: Array.from({ length: 11 }, (_, i) => createPlayer(i + 1))
-    },
+    // History
+    history: [],
 
-    // Selected player for modal
+    // UI State
     selectedPlayer: null,
-    selectedTeam: null
+    selectedTeam: null,
+
+    // Caches
+    sceneItemIdCache: new Map(),
+    inputFileCache: new Map()
   };
 
-  function createPlayer(slot) {
-    return {
-      slot,
-      number: slot,
-      name: "",
-      goals: 0,
-      yellowCards: 0,
-      redCard: false,
-      substitutedOut: false
-    };
-  }
-
-  // ============================================================
-  // WEBSOCKET (OBS-WebSocket v5)
-  // ============================================================
+  // ===========================================
+  // WEBSOCKET - OBS WebSocket v5
+  // ===========================================
   const OP = {
     HELLO: 0,
     IDENTIFY: 1,
@@ -204,6 +299,33 @@
     return btoa(binary);
   }
 
+  function updateWsStatus(status) {
+    if (!el.pillWs) return;
+
+    el.pillWs.classList.remove("pill--on", "pill--off", "pill--connecting");
+
+    const icon = el.pillWs.querySelector(".material-symbols-outlined");
+
+    switch (status) {
+      case "connected":
+        el.pillWs.classList.add("pill--on");
+        if (icon) icon.textContent = "wifi";
+        if (el.pillWsText) el.pillWsText.textContent = "Conectado";
+        break;
+      case "connecting":
+        el.pillWs.classList.add("pill--connecting");
+        if (icon) icon.textContent = "sync";
+        if (el.pillWsText) el.pillWsText.textContent = "Conectando...";
+        break;
+      case "disconnected":
+      default:
+        el.pillWs.classList.add("pill--off");
+        if (icon) icon.textContent = "wifi_off";
+        if (el.pillWsText) el.pillWsText.textContent = "Desconectado";
+        break;
+    }
+  }
+
   function wsConnect(force = false) {
     if (force) {
       state.retryIndex = 0;
@@ -217,8 +339,8 @@
     }
 
     const url = CFG.wsUrl || "ws://127.0.0.1:4455";
-    log("WS connecting", { url });
-    updateWsPill("connecting");
+    log(`WS connecting to ${url}`);
+    updateWsStatus("connecting");
 
     state.ws = new WebSocket(url);
 
@@ -234,8 +356,8 @@
       state.connected = false;
       state.ws = null;
       rejectAllPending(new Error("socket closed"));
-      updateWsPill("off");
-      log("WS closed", { code: ev.code });
+      updateWsStatus("disconnected");
+      log(`WS closed (code: ${ev.code})`);
 
       if (CFG.reconnect?.enabled !== false) {
         scheduleReconnect();
@@ -266,7 +388,7 @@
   }
 
   async function handleHello(data) {
-    log("WS hello", { authRequired: !!data?.authentication });
+    log("WS hello received", { authRequired: !!data?.authentication });
 
     let auth;
     if (data?.authentication && CFG.password) {
@@ -292,14 +414,14 @@
     log("WS identify sent");
   }
 
-  function handleIdentified() {
+  async function handleIdentified() {
     state.connected = true;
     state.retryIndex = 0;
-    updateWsPill("on");
-    log("WS identified");
+    updateWsStatus("connected");
+    log("WS identified - connected!");
 
-    // Load scenes
-    loadScenes();
+    // Post-connection initialization
+    await onConnected();
   }
 
   function handleEvent(data) {
@@ -336,7 +458,7 @@
     const jitter = Math.floor(Math.random() * 251);
 
     state.retryIndex++;
-    log("WS reconnect scheduled", { delayMs: delay + jitter });
+    log(`WS reconnect scheduled in ${delay + jitter}ms`);
 
     state.reconnectTimer = setTimeout(() => {
       wsConnect();
@@ -373,29 +495,41 @@
     });
   }
 
-  function updateWsPill(status) {
-    if (!el.pillWs) return;
+  // ===========================================
+  // POST-CONNECTION INITIALIZATION
+  // ===========================================
+  async function onConnected() {
+    try {
+      // 1. Load scenes
+      await loadScenes();
 
-    el.pillWs.classList.remove("pill--on", "pill--off");
+      // 2. Discover skins
+      await discoverSkins();
 
-    if (status === "on") {
-      el.pillWs.classList.add("pill--on");
-      el.pillWs.textContent = "WS ON";
-    } else if (status === "connecting") {
-      el.pillWs.textContent = "WS...";
-    } else {
-      el.pillWs.classList.add("pill--off");
-      el.pillWs.textContent = "WS OFF";
+      // 3. Load teams data
+      loadTeamsData();
+
+      // 4. Apply current skin
+      if (state.currentSkin) {
+        await applySkin(state.currentSkin, false);
+      }
+
+      // 5. Full sync
+      await syncAll();
+
+      log("Post-connection initialization complete");
+    } catch (err) {
+      log("Error in post-connection init", err.message);
     }
   }
 
-  // ============================================================
+  // ===========================================
   // OBS OPERATIONS
-  // ============================================================
+  // ===========================================
   async function loadScenes() {
     try {
       const res = await call("GetSceneList");
-      state.availableScenes = (res.scenes || []).map((s) => s.sceneName);
+      state.availableScenes = (res.scenes || []).map((s) => s.sceneName).reverse();
       state.currentScene = res.currentProgramSceneName || "";
 
       if (el.sceneSelect) {
@@ -409,109 +543,192 @@
         el.sceneSelect.value = state.currentScene;
       }
 
-      log("Scenes loaded", { count: state.availableScenes.length });
+      log(`Loaded ${state.availableScenes.length} scenes`);
     } catch (err) {
-      log("Error loading scenes", { error: err.message });
+      log("Error loading scenes", err.message);
     }
+  }
+
+  async function discoverSkins() {
+    // For now, use configured skins
+    state.discoveredSkins = CFG.skins || ["generico"];
+
+    if (el.skinSelect) {
+      el.skinSelect.innerHTML = "";
+      state.discoveredSkins.forEach((skin) => {
+        const opt = document.createElement("option");
+        opt.value = skin;
+        opt.textContent = skin.charAt(0).toUpperCase() + skin.slice(1);
+        el.skinSelect.appendChild(opt);
+      });
+      el.skinSelect.value = state.currentSkin;
+    }
+
+    log(`Discovered skins: ${state.discoveredSkins.join(", ")}`);
   }
 
   async function setScene(sceneName) {
+    if (!state.connected) return;
+
     try {
       await call("SetCurrentProgramScene", { sceneName });
       state.currentScene = sceneName;
-      log("Scene changed", { scene: sceneName });
+      log(`Scene changed to: ${sceneName}`);
     } catch (err) {
-      log("Error changing scene", { error: err.message });
+      log("Error changing scene", err.message);
     }
   }
 
+  function getSourceName(pattern) {
+    if (!pattern) return "";
+    return pattern.replace(/<skin>/g, state.currentSkin);
+  }
+
   async function setInputText(inputName, text) {
+    if (!state.connected || !inputName) return;
+
     try {
       await call("SetInputSettings", {
         inputName,
         inputSettings: { text: String(text) }
       });
     } catch (err) {
-      log("Error setting text", { input: inputName, error: err.message });
+      // Silent fail for non-existent inputs
     }
   }
 
   async function setInputFile(inputName, file) {
+    if (!state.connected || !inputName) return;
+
     try {
       await call("SetInputSettings", {
         inputName,
         inputSettings: { file }
       });
     } catch (err) {
-      log("Error setting file", { input: inputName, error: err.message });
+      // Silent fail
     }
   }
 
-  function getSourceName(pattern) {
-    return pattern.replace("<skin>", state.currentSkin);
+  async function setSceneItemEnabled(sceneName, itemName, enabled) {
+    if (!state.connected) return;
+
+    try {
+      // Get scene item ID
+      const cacheKey = `${sceneName}:${itemName}`;
+      let sceneItemId = state.sceneItemIdCache.get(cacheKey);
+
+      if (!sceneItemId) {
+        const res = await call("GetSceneItemId", {
+          sceneName,
+          sourceName: itemName
+        });
+        sceneItemId = res.sceneItemId;
+        state.sceneItemIdCache.set(cacheKey, sceneItemId);
+      }
+
+      await call("SetSceneItemEnabled", {
+        sceneName,
+        sceneItemId,
+        sceneItemEnabled: enabled
+      });
+    } catch (err) {
+      // Silent fail
+    }
   }
 
-  // ============================================================
-  // SYNC TO OBS
-  // ============================================================
-  async function syncScore() {
-    const homeSource = getSourceName(CFG.sourcePatterns?.scoreHome || "<skin>_score_home");
-    const awaySource = getSourceName(CFG.sourcePatterns?.scoreAway || "<skin>_score_away");
+  // ===========================================
+  // SKIN MANAGEMENT
+  // ===========================================
+  async function applySkin(newSkin, animate = true) {
+    const oldSkin = state.currentSkin;
+    state.currentSkin = newSkin;
+
+    log(`Applying skin: ${oldSkin} -> ${newSkin}`);
+
+    // Update font for all text inputs based on skin
+    const font = CFG.skinFonts?.[newSkin] || "Nunito";
+    // Font updates would be applied here if needed
+
+    // Re-sync everything with new skin
+    await syncAll();
+
+    saveState();
+    log(`Skin applied: ${newSkin}`);
+  }
+
+  async function changeSkin(newSkin) {
+    if (newSkin === state.currentSkin) return;
+
+    await applySkin(newSkin, true);
+
+    if (el.skinSelect) {
+      el.skinSelect.value = newSkin;
+    }
+  }
+
+  // ===========================================
+  // SYNC OPERATIONS
+  // ===========================================
+  async function syncAll() {
+    if (!state.connected) {
+      log("Cannot sync - not connected");
+      return;
+    }
+
+    log("Starting full sync...");
 
     await Promise.all([
-      setInputText(homeSource, String(state.score.home)),
-      setInputText(awaySource, String(state.score.away))
+      syncScore(),
+      syncTeams(),
+      syncTimer(),
+      syncAggregate(),
+      syncPenalties(),
+      syncPlayers()
     ]);
 
-    log("Score synced", state.score);
+    log("Full sync complete");
+  }
+
+  async function syncScore() {
+    const patterns = CFG.sourcePatterns || {};
+
+    await Promise.all([
+      setInputText(getSourceName(patterns.scoreHome), String(state.score.home)),
+      setInputText(getSourceName(patterns.scoreAway), String(state.score.away))
+    ]);
   }
 
   async function syncTeams() {
     const patterns = CFG.sourcePatterns || {};
+    const home = state.teams.home;
+    const away = state.teams.away;
 
-    const tasks = [];
+    const tasks = [
+      setInputText(getSourceName(patterns.teamNameHome), home.name),
+      setInputText(getSourceName(patterns.teamNameAway), away.name),
+      setInputText(getSourceName(patterns.teamSiglaHome), home.sigla),
+      setInputText(getSourceName(patterns.teamSiglaAway), away.sigla),
+      setInputText(getSourceName(patterns.coachHome), home.coach),
+      setInputText(getSourceName(patterns.coachAway), away.coach)
+    ];
 
-    // Home team
-    if (patterns.teamNameHome) {
-      tasks.push(setInputText(getSourceName(patterns.teamNameHome), state.teams.home.name));
+    if (home.logo) {
+      tasks.push(setInputFile(getSourceName(patterns.teamLogoHome), home.logo));
     }
-    if (patterns.teamSiglaHome) {
-      tasks.push(setInputText(getSourceName(patterns.teamSiglaHome), state.teams.home.sigla));
-    }
-    if (patterns.coachHome) {
-      tasks.push(setInputText(getSourceName(patterns.coachHome), state.teams.home.coach));
-    }
-    if (patterns.teamLogoHome && state.teams.home.logo) {
-      tasks.push(setInputFile(getSourceName(patterns.teamLogoHome), state.teams.home.logo));
-    }
-
-    // Away team
-    if (patterns.teamNameAway) {
-      tasks.push(setInputText(getSourceName(patterns.teamNameAway), state.teams.away.name));
-    }
-    if (patterns.teamSiglaAway) {
-      tasks.push(setInputText(getSourceName(patterns.teamSiglaAway), state.teams.away.sigla));
-    }
-    if (patterns.coachAway) {
-      tasks.push(setInputText(getSourceName(patterns.coachAway), state.teams.away.coach));
-    }
-    if (patterns.teamLogoAway && state.teams.away.logo) {
-      tasks.push(setInputFile(getSourceName(patterns.teamLogoAway), state.teams.away.logo));
+    if (away.logo) {
+      tasks.push(setInputFile(getSourceName(patterns.teamLogoAway), away.logo));
     }
 
     await Promise.all(tasks);
-    log("Teams synced");
   }
 
   async function syncTimer() {
-    const timerSource = getSourceName(CFG.sourcePatterns?.timer || "<skin>_timer");
-    const periodSource = getSourceName(CFG.sourcePatterns?.period || "<skin>_period");
-
-    const formatted = formatTime(state.timer.elapsedMs);
+    const patterns = CFG.sourcePatterns || {};
 
     await Promise.all([
-      setInputText(timerSource, formatted),
-      setInputText(periodSource, state.timer.period)
+      setInputText(getSourceName(patterns.timer), formatTime(state.timer.elapsedMs)),
+      setInputText(getSourceName(patterns.period), state.timer.period)
     ]);
   }
 
@@ -519,177 +736,217 @@
     if (!state.aggregate.enabled) return;
 
     const patterns = CFG.sourcePatterns || {};
-    const tasks = [];
+    const totalHome = state.score.home + state.aggregate.home;
+    const totalAway = state.score.away + state.aggregate.away;
 
-    if (patterns.aggHome) {
-      tasks.push(setInputText(getSourceName(patterns.aggHome), String(state.aggregate.home)));
-    }
-    if (patterns.aggAway) {
-      tasks.push(setInputText(getSourceName(patterns.aggAway), String(state.aggregate.away)));
-    }
-
-    await Promise.all(tasks);
-  }
-
-  async function syncAll() {
-    log("Full sync started");
     await Promise.all([
-      syncScore(),
-      syncTeams(),
-      syncTimer(),
-      syncAggregate()
+      setInputText(getSourceName(patterns.aggHome), String(state.aggregate.home)),
+      setInputText(getSourceName(patterns.aggAway), String(state.aggregate.away)),
+      setInputText(getSourceName(patterns.aggTotalHome), String(totalHome)),
+      setInputText(getSourceName(patterns.aggTotalAway), String(totalAway))
     ]);
-    log("Full sync completed");
   }
 
-  // ============================================================
-  // TIMER
-  // ============================================================
-  function formatTime(ms) {
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  async function syncPenalties() {
+    if (!state.penalties.active) return;
+
+    const patterns = CFG.sourcePatterns || {};
+
+    // Sync penalty scores
+    const homeScore = state.penalties.home.filter((s) => s === "goal").length;
+    const awayScore = state.penalties.away.filter((s) => s === "goal").length;
+
+    await Promise.all([
+      setInputText(getSourceName(patterns.penScoreHome), String(homeScore)),
+      setInputText(getSourceName(patterns.penScoreAway), String(awayScore))
+    ]);
+
+    // Sync individual markers would go here
   }
 
-  function parseTime(str) {
-    const parts = (str || "").split(":");
-    if (parts.length !== 2) return 0;
-    const m = parseInt(parts[0], 10) || 0;
-    const s = parseInt(parts[1], 10) || 0;
-    return (m * 60 + s) * 1000;
-  }
+  async function syncPlayers() {
+    const patterns = CFG.sourcePatterns || {};
 
-  function startTimer() {
-    if (state.timer.running) return;
+    for (const side of ["home", "away"]) {
+      const team = state.teams[side];
+      const suffix = side === "home" ? "casa" : "fora";
 
-    state.timer.running = true;
-    state.timer.startedAt = Date.now() - state.timer.elapsedMs;
+      for (let i = 0; i < team.players.length && i < 11; i++) {
+        const player = team.players[i];
+        const slot = i + 1;
 
-    state.timer.handle = setInterval(() => {
-      state.timer.elapsedMs = Date.now() - state.timer.startedAt;
-      updateTimerUI();
+        // Sync player name and number
+        const namePattern = patterns.playerName?.replace("<skin>", state.currentSkin);
+        const numPattern = patterns.playerNumber?.replace("<skin>", state.currentSkin);
 
-      // Sync every 1 second
-      syncTimer();
-    }, 1000);
-
-    log("Timer started");
-  }
-
-  function pauseTimer() {
-    if (!state.timer.running) return;
-
-    state.timer.running = false;
-    clearInterval(state.timer.handle);
-    state.timer.handle = null;
-    state.timer.elapsedMs = Date.now() - state.timer.startedAt;
-
-    log("Timer paused", { elapsed: formatTime(state.timer.elapsedMs) });
-  }
-
-  function resetTimer() {
-    pauseTimer();
-    state.timer.elapsedMs = 0;
-    state.timer.startedAt = null;
-    updateTimerUI();
-    syncTimer();
-    log("Timer reset");
-  }
-
-  function setTimerFromInput() {
-    const input = el.timerSetInput?.value || "";
-    const ms = parseTime(input);
-    state.timer.elapsedMs = ms;
-
-    if (state.timer.running) {
-      state.timer.startedAt = Date.now() - ms;
-    }
-
-    updateTimerUI();
-    syncTimer();
-    log("Timer set", { value: formatTime(ms) });
-  }
-
-  function updateTimerUI() {
-    if (el.timerDisplay) {
-      el.timerDisplay.textContent = formatTime(state.timer.elapsedMs);
+        if (namePattern) {
+          await setInputText(`${namePattern}${suffix}_${slot}`, player.name);
+        }
+        if (numPattern) {
+          await setInputText(`${numPattern}${suffix}_${slot}`, pad2(player.number));
+        }
+      }
     }
   }
 
-  function setPeriod(period) {
-    state.timer.period = period;
+  async function syncPlayer(side, playerIndex) {
+    const team = state.teams[side];
+    const player = team.players[playerIndex];
+    if (!player) return;
 
-    // Update UI
-    [el.btnStatus1T, el.btnStatus2T, el.btnStatusInt, el.btnStatusPro, el.btnStatusPen].forEach((btn) => {
-      if (btn) btn.classList.remove("active");
+    const patterns = CFG.sourcePatterns || {};
+    const suffix = side === "home" ? "casa" : "fora";
+    const slot = playerIndex + 1;
+
+    // Sync name and number
+    const namePattern = patterns.playerName?.replace("<skin>", state.currentSkin);
+    const numPattern = patterns.playerNumber?.replace("<skin>", state.currentSkin);
+
+    if (namePattern) {
+      await setInputText(`${namePattern}${suffix}_${slot}`, player.name);
+    }
+    if (numPattern) {
+      await setInputText(`${numPattern}${suffix}_${slot}`, pad2(player.number));
+    }
+
+    // Sync goal indicator
+    // Sync card indicator
+    // Sync sub indicator
+    // These would be implemented based on OBS source structure
+  }
+
+  // ===========================================
+  // TEAMS
+  // ===========================================
+  function loadTeamsData() {
+    const teamsData = window.SPIDERKONG_TEAMS?.teams || [];
+
+    [el.homeTeamSelect, el.awayTeamSelect].forEach((select) => {
+      if (!select) return;
+
+      // Keep first option
+      select.innerHTML = '<option value="">Selecionar time...</option>';
+
+      teamsData.forEach((team) => {
+        const opt = document.createElement("option");
+        opt.value = team.name;
+        opt.textContent = team.name;
+        opt.dataset.sigla = team.sigla || "";
+        opt.dataset.file = team.file || "";
+        select.appendChild(opt);
+      });
     });
+  }
 
-    const btnMap = {
-      "1T": el.btnStatus1T,
-      "2T": el.btnStatus2T,
-      "INT": el.btnStatusInt,
-      "PRO": el.btnStatusPro,
-      "PEN": el.btnStatusPen
+  function onTeamSelect(side) {
+    const select = side === "home" ? el.homeTeamSelect : el.awayTeamSelect;
+    const nameInput = side === "home" ? el.homeTeamName : el.awayTeamName;
+    const siglaInput = side === "home" ? el.homeTeamSigla : el.awayTeamSigla;
+    const logoPreview = side === "home" ? el.homeLogoPreview : el.awayLogoPreview;
+
+    if (!select) return;
+
+    const opt = select.options[select.selectedIndex];
+    if (!opt || !opt.value) return;
+
+    const teamData = {
+      name: opt.value,
+      sigla: opt.dataset.sigla || "",
+      logo: opt.dataset.file || ""
     };
 
-    if (btnMap[period]) {
-      btnMap[period].classList.add("active");
-    }
+    // Update inputs
+    if (nameInput) nameInput.value = teamData.name;
+    if (siglaInput) siglaInput.value = teamData.sigla;
+    if (logoPreview) logoPreview.src = teamData.logo;
 
-    // Show/hide penalties panel
-    if (period === "PEN") {
-      state.penalties.active = true;
-      if (el.penaltiesPanel) {
-        el.penaltiesPanel.classList.remove("isHidden");
-      }
-    } else {
-      state.penalties.active = false;
-      if (el.penaltiesPanel) {
-        el.penaltiesPanel.classList.add("isHidden");
-      }
-    }
-
-    syncTimer();
-    log("Period set", { period });
+    // Update state
+    state.teams[side].name = teamData.name;
+    state.teams[side].sigla = teamData.sigla;
+    state.teams[side].logo = teamData.logo;
   }
 
-  // ============================================================
+  async function applyTeam(side) {
+    const nameInput = side === "home" ? el.homeTeamName : el.awayTeamName;
+    const siglaInput = side === "home" ? el.homeTeamSigla : el.awayTeamSigla;
+    const coachInput = side === "home" ? el.homeCoach : el.awayCoach;
+
+    state.teams[side].name = nameInput?.value || "";
+    state.teams[side].sigla = siglaInput?.value || "";
+    state.teams[side].coach = coachInput?.value || "";
+
+    // Update scoreboard display
+    updateScoreboardDisplay();
+
+    // Sync to OBS
+    await syncTeams();
+
+    saveState();
+    log(`Team ${side} applied`);
+  }
+
+  function updateScoreboardDisplay() {
+    if (el.scoreSiglaHome) el.scoreSiglaHome.textContent = state.teams.home.sigla || "CAS";
+    if (el.scoreSiglaAway) el.scoreSiglaAway.textContent = state.teams.away.sigla || "VIS";
+    if (el.scoreNameHome) el.scoreNameHome.textContent = state.teams.home.name || "Casa";
+    if (el.scoreNameAway) el.scoreNameAway.textContent = state.teams.away.name || "Visitante";
+
+    // Update penalty tags
+    if (el.penTagHome) el.penTagHome.textContent = state.teams.home.sigla || "CAS";
+    if (el.penTagAway) el.penTagAway.textContent = state.teams.away.sigla || "VIS";
+  }
+
+  // ===========================================
   // SCORE
-  // ============================================================
+  // ===========================================
   function updateScoreUI() {
     if (el.scoreHome) el.scoreHome.textContent = String(state.score.home);
     if (el.scoreAway) el.scoreAway.textContent = String(state.score.away);
   }
 
-  function changeScore(team, delta) {
-    const current = state.score[team];
-    state.score[team] = Math.max(0, Math.min(99, current + delta));
+  async function changeScore(side, delta) {
+    const current = state.score[side];
+    state.score[side] = clamp(current + delta, 0, 99);
+
     updateScoreUI();
     updateAggregateUI();
-    syncScore();
+
+    await syncScore();
+    if (state.aggregate.enabled) {
+      await syncAggregate();
+    }
+
     saveState();
   }
 
-  function resetScore() {
+  async function resetScore() {
     state.score.home = 0;
     state.score.away = 0;
+
     updateScoreUI();
     updateAggregateUI();
-    syncScore();
+
+    await syncScore();
+    if (state.aggregate.enabled) {
+      await syncAggregate();
+    }
+
     saveState();
     log("Score reset");
   }
 
-  // ============================================================
+  // ===========================================
   // AGGREGATE
-  // ============================================================
+  // ===========================================
   function toggleAggregate() {
     state.aggregate.enabled = !state.aggregate.enabled;
 
     if (el.btnToggleAgg) {
       el.btnToggleAgg.classList.toggle("active", state.aggregate.enabled);
-      el.btnToggleAgg.innerHTML = `<span class="material-symbols-outlined">calculate</span> AGREGADO: ${state.aggregate.enabled ? "ON" : "OFF"}`;
+      el.btnToggleAgg.innerHTML = `
+        <span class="material-symbols-outlined">calculate</span>
+        Agregado: ${state.aggregate.enabled ? "ON" : "OFF"}
+      `;
     }
 
     if (el.aggControls) {
@@ -700,11 +957,12 @@
     saveState();
   }
 
-  function changeAggregate(team, delta) {
-    const current = state.aggregate[team];
-    state.aggregate[team] = Math.max(0, Math.min(99, current + delta));
+  async function changeAggregate(side, delta) {
+    const current = state.aggregate[side];
+    state.aggregate[side] = clamp(current + delta, 0, 99);
+
     updateAggregateUI();
-    syncAggregate();
+    await syncAggregate();
     saveState();
   }
 
@@ -720,153 +978,308 @@
     }
   }
 
-  // ============================================================
-  // PENALTIES
-  // ============================================================
-  function addPenalty() {
-    // Alternate between teams
-    const homeCount = state.penalties.home.length;
-    const awayCount = state.penalties.away.length;
+  // ===========================================
+  // TIMER
+  // ===========================================
+  function updateTimerUI() {
+    const display = formatTime(state.timer.elapsedMs);
+    if (el.timerDisplay) {
+      el.timerDisplay.textContent = display;
+      el.timerDisplay.classList.toggle("running", state.timer.running);
+    }
+  }
 
-    if (homeCount <= awayCount) {
-      state.penalties.home.push("empty");
-    } else {
-      state.penalties.away.push("empty");
+  function startTimer() {
+    if (state.timer.running) return;
+
+    state.timer.running = true;
+    state.timer.startedAt = Date.now() - state.timer.elapsedMs;
+
+    state.timer.handle = setInterval(() => {
+      state.timer.elapsedMs = Date.now() - state.timer.startedAt;
+      updateTimerUI();
+      syncTimer();
+    }, 1000);
+
+    updateTimerUI();
+    log("Timer started");
+  }
+
+  function pauseTimer() {
+    if (!state.timer.running) return;
+
+    state.timer.running = false;
+    clearInterval(state.timer.handle);
+    state.timer.handle = null;
+    state.timer.elapsedMs = Date.now() - state.timer.startedAt;
+
+    updateTimerUI();
+    syncTimer();
+    saveState();
+    log(`Timer paused at ${formatTime(state.timer.elapsedMs)}`);
+  }
+
+  function resetTimer() {
+    pauseTimer();
+    state.timer.elapsedMs = 0;
+    state.timer.startedAt = null;
+
+    updateTimerUI();
+    syncTimer();
+    saveState();
+    log("Timer reset");
+  }
+
+  function setTimerFromInput() {
+    const input = el.timerSetInput?.value || "";
+    const ms = parseTime(input);
+    state.timer.elapsedMs = ms;
+
+    if (state.timer.running) {
+      state.timer.startedAt = Date.now() - ms;
     }
 
-    renderPenalties();
+    updateTimerUI();
+    syncTimer();
     saveState();
+    log(`Timer set to ${formatTime(ms)}`);
   }
 
-  function resetPenalties() {
-    state.penalties.home = [];
-    state.penalties.away = [];
-    renderPenalties();
+  async function setPeriod(period) {
+    state.timer.period = period;
+
+    // Update UI
+    [el.btnPeriod1T, el.btnPeriod2T, el.btnPeriodInt, el.btnPeriodPro, el.btnPeriodPen].forEach((btn) => {
+      if (btn) {
+        btn.classList.toggle("active", btn.dataset.period === period);
+      }
+    });
+
+    // Show/hide penalties panel
+    const isPenalties = period === "PEN";
+    state.penalties.active = isPenalties;
+
+    if (el.penaltiesCard) {
+      el.penaltiesCard.classList.toggle("isHidden", !isPenalties);
+    }
+
+    if (isPenalties) {
+      renderPenalties();
+    }
+
+    await syncTimer();
+    if (isPenalties) {
+      await syncPenalties();
+    }
+
     saveState();
-    log("Penalties reset");
+    log(`Period set to ${period}`);
   }
 
-  function cyclePenalty(team, index) {
-    const arr = state.penalties[team];
-    if (index >= arr.length) return;
-
-    const current = arr[index];
-    const next = current === "empty" ? "goal" : current === "goal" ? "miss" : "empty";
-    arr[index] = next;
-
-    renderPenalties();
-    saveState();
-  }
-
+  // ===========================================
+  // PENALTIES
+  // ===========================================
   function renderPenalties() {
     renderPenaltyList(el.penListHome, state.penalties.home, "home");
     renderPenaltyList(el.penListAway, state.penalties.away, "away");
+    updatePenaltyScores();
   }
 
-  function renderPenaltyList(container, arr, team) {
+  function renderPenaltyList(container, shots, side) {
     if (!container) return;
+
     container.innerHTML = "";
 
-    arr.forEach((val, i) => {
+    shots.forEach((status, index) => {
       const btn = document.createElement("button");
-      btn.className = `penBtn ${val === "goal" ? "is-goal" : val === "miss" ? "is-miss" : ""}`;
-      btn.innerHTML = val === "goal" ? "O" : val === "miss" ? "X" : "-";
-      btn.onclick = () => cyclePenalty(team, i);
+      btn.className = "penBtn";
+      btn.dataset.side = side;
+      btn.dataset.index = index;
+
+      if (status === "goal") {
+        btn.classList.add("is-goal");
+        btn.innerHTML = '<span class="material-symbols-outlined">check</span>';
+      } else if (status === "miss") {
+        btn.classList.add("is-miss");
+        btn.innerHTML = '<span class="material-symbols-outlined">close</span>';
+      } else {
+        btn.textContent = String(index + 1);
+      }
+
+      btn.onclick = () => cyclePenalty(side, index);
       container.appendChild(btn);
     });
   }
 
-  // ============================================================
-  // TEAMS
-  // ============================================================
-  function loadTeamsData() {
-    const teamsData = window.SPIDERKONG_TEAMS?.teams || [];
+  async function cyclePenalty(side, index) {
+    const shots = state.penalties[side];
+    const current = shots[index];
 
-    [el.homeTeamSelect, el.awayTeamSelect].forEach((select) => {
-      if (!select) return;
-      select.innerHTML = '<option value="">-- Selecionar --</option>';
-      teamsData.forEach((team) => {
-        const opt = document.createElement("option");
-        opt.value = team.name;
-        opt.textContent = team.name;
-        opt.dataset.sigla = team.sigla || "";
-        opt.dataset.file = team.file || "";
-        select.appendChild(opt);
-      });
-    });
-  }
+    // Cycle: empty -> goal -> miss -> empty
+    const next = current === "empty" ? "goal" : current === "goal" ? "miss" : "empty";
+    shots[index] = next;
 
-  function applyTeamFromSelect(team) {
-    const select = team === "home" ? el.homeTeamSelect : el.awayTeamSelect;
-    const nameInput = team === "home" ? el.homeTeamName : el.awayTeamName;
-    const siglaInput = team === "home" ? el.homeTeamSigla : el.awayTeamSigla;
-
-    if (!select) return;
-
-    const opt = select.options[select.selectedIndex];
-    if (!opt || !opt.value) return;
-
-    state.teams[team].name = opt.value;
-    state.teams[team].sigla = opt.dataset.sigla || "";
-    state.teams[team].logo = opt.dataset.file || "";
-
-    if (nameInput) nameInput.value = opt.value;
-    if (siglaInput) siglaInput.value = opt.dataset.sigla || "";
-
+    renderPenalties();
+    await syncPenalties();
     saveState();
   }
 
-  function applyTeamFromInputs(team) {
-    const nameInput = team === "home" ? el.homeTeamName : el.awayTeamName;
-    const siglaInput = team === "home" ? el.homeTeamSigla : el.awayTeamSigla;
-    const coachInput = team === "home" ? el.homeCoach : el.awayCoach;
+  function updatePenaltyScores() {
+    const homeScore = state.penalties.home.filter((s) => s === "goal").length;
+    const awayScore = state.penalties.away.filter((s) => s === "goal").length;
 
-    state.teams[team].name = nameInput?.value || "";
-    state.teams[team].sigla = siglaInput?.value || "";
-    state.teams[team].coach = coachInput?.value || "";
-
-    syncTeams();
-    saveState();
-    log("Team applied", { team, data: state.teams[team] });
+    if (el.penScoreHome) el.penScoreHome.textContent = String(homeScore);
+    if (el.penScoreAway) el.penScoreAway.textContent = String(awayScore);
   }
 
-  // ============================================================
+  async function resetPenalties() {
+    state.penalties.home = createPenalties();
+    state.penalties.away = createPenalties();
+
+    renderPenalties();
+    await syncPenalties();
+    saveState();
+    log("Penalties reset");
+  }
+
+  // ===========================================
   // ROSTER
-  // ============================================================
-  function toggleRoster() {
-    if (el.rosterBody) {
-      el.rosterBody.classList.toggle("isHidden");
+  // ===========================================
+  function renderRosterInputs() {
+    renderRosterInputsForSide("home", el.rosterInputsHome);
+    renderRosterInputsForSide("away", el.rosterInputsAway);
+  }
+
+  function renderRosterInputsForSide(side, container) {
+    if (!container) return;
+
+    container.innerHTML = "";
+    const team = state.teams[side];
+
+    for (let i = 0; i < 11; i++) {
+      const player = team.players[i] || createPlayer(i + 1);
+
+      const row = document.createElement("div");
+      row.className = "rosterInput";
+
+      const numInput = document.createElement("input");
+      numInput.type = "text";
+      numInput.className = "numInput";
+      numInput.placeholder = pad2(i + 1);
+      numInput.maxLength = 2;
+      numInput.value = player.number ? pad2(player.number) : "";
+      numInput.dataset.side = side;
+      numInput.dataset.slot = i;
+      numInput.dataset.field = "number";
+
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.className = "nameInput";
+      nameInput.placeholder = `Jogador ${i + 1}`;
+      nameInput.value = player.name || "";
+      nameInput.dataset.side = side;
+      nameInput.dataset.slot = i;
+      nameInput.dataset.field = "name";
+
+      row.appendChild(numInput);
+      row.appendChild(nameInput);
+      container.appendChild(row);
     }
-    if (el.btnToggleRoster) {
-      const icon = el.btnToggleRoster.querySelector(".material-symbols-outlined");
-      if (icon) {
-        icon.textContent = el.rosterBody?.classList.contains("isHidden") ? "expand_more" : "expand_less";
+
+    // Set coach value
+    const coachInput = side === "home" ? el.rosterCoachHome : el.rosterCoachAway;
+    if (coachInput) {
+      coachInput.value = team.coach || "";
+    }
+  }
+
+  async function applyRoster() {
+    // Read values from inputs
+    for (const side of ["home", "away"]) {
+      const container = side === "home" ? el.rosterInputsHome : el.rosterInputsAway;
+      const coachInput = side === "home" ? el.rosterCoachHome : el.rosterCoachAway;
+
+      if (container) {
+        const inputs = container.querySelectorAll("input");
+        inputs.forEach((input) => {
+          const slot = parseInt(input.dataset.slot, 10);
+          const field = input.dataset.field;
+          const player = state.teams[side].players[slot];
+
+          if (player && field === "number") {
+            player.number = parseInt(input.value, 10) || slot + 1;
+          } else if (player && field === "name") {
+            player.name = input.value || "";
+          }
+        });
+      }
+
+      if (coachInput) {
+        state.teams[side].coach = coachInput.value || "";
       }
     }
+
+    // Refresh player lists
+    renderPlayersLists();
+
+    // Sync to OBS
+    await syncTeams();
+    await syncPlayers();
+
+    saveState();
+    log("Roster applied");
   }
 
-  function renderRoster() {
-    renderRosterList(el.rosterHomeList, state.roster.home, "home");
-    renderRosterList(el.rosterAwayList, state.roster.away, "away");
+  function clearRoster() {
+    for (const side of ["home", "away"]) {
+      state.teams[side].coach = "";
+      state.teams[side].players = Array.from({ length: 11 }, (_, i) => createPlayer(i + 1));
+    }
+
+    renderRosterInputs();
+    renderPlayersLists();
+    saveState();
+    log("Roster cleared");
   }
 
-  function renderRosterList(container, players, team) {
+  // ===========================================
+  // PLAYERS IN FIELD
+  // ===========================================
+  function renderPlayersLists() {
+    renderPlayersListForSide("home", el.playersListHome);
+    renderPlayersListForSide("away", el.playersListAway);
+  }
+
+  function renderPlayersListForSide(side, container) {
     if (!container) return;
-    container.innerHTML = "";
 
-    players.forEach((player, i) => {
+    container.innerHTML = "";
+    const team = state.teams[side];
+
+    team.players.forEach((player, index) => {
       const item = document.createElement("div");
       item.className = "rosterItem";
-      if (player.substitutedOut) item.classList.add("substituted");
+      item.dataset.side = side;
+      item.dataset.index = index;
 
+      if (player.substitutedOut) {
+        item.classList.add("substituted");
+      }
+      if (player.redCard || player.yellowCards >= 2) {
+        item.classList.add("expelled");
+      }
+
+      // Number
       const numSpan = document.createElement("span");
       numSpan.className = "rosterNumber";
-      numSpan.textContent = String(player.number).padStart(2, "0");
+      numSpan.textContent = pad2(player.number);
 
+      // Name
       const nameSpan = document.createElement("span");
       nameSpan.className = "rosterName";
-      nameSpan.textContent = player.name || `Jogador ${i + 1}`;
+      nameSpan.textContent = player.name || `Jogador ${index + 1}`;
 
+      // Badges
       const badges = document.createElement("div");
       badges.className = "rosterBadges";
 
@@ -877,17 +1290,38 @@
         badges.appendChild(badge);
       }
 
-      if (player.yellowCards > 0) {
+      if (player.yellowCards === 1) {
         const badge = document.createElement("span");
         badge.className = "badge badge--yellow";
-        badge.textContent = String(player.yellowCards);
+        badge.textContent = "1";
+        badges.appendChild(badge);
+      }
+
+      if (player.yellowCards >= 2) {
+        const badge = document.createElement("span");
+        badge.className = "badge badge--yellow";
+        badge.textContent = "2";
         badges.appendChild(badge);
       }
 
       if (player.redCard) {
         const badge = document.createElement("span");
         badge.className = "badge badge--red";
-        badge.textContent = "R";
+        badge.textContent = "V";
+        badges.appendChild(badge);
+      }
+
+      if (player.substitutedOut) {
+        const badge = document.createElement("span");
+        badge.className = "badge badge--sub";
+        badge.innerHTML = '<span class="material-symbols-outlined" style="font-size:12px">arrow_downward</span>';
+        badges.appendChild(badge);
+      }
+
+      if (player.isEntered) {
+        const badge = document.createElement("span");
+        badge.className = "badge badge--sub";
+        badge.innerHTML = '<span class="material-symbols-outlined" style="font-size:12px">arrow_upward</span>';
         badges.appendChild(badge);
       }
 
@@ -895,27 +1329,53 @@
       item.appendChild(nameSpan);
       item.appendChild(badges);
 
-      item.onclick = () => openPlayerModal(team, i);
+      // Click handler
+      if (!player.redCard && player.yellowCards < 2 && !player.substitutedOut) {
+        item.onclick = () => openPlayerModal(side, index);
+      }
 
       container.appendChild(item);
     });
   }
 
-  // ============================================================
+  // ===========================================
   // PLAYER MODAL
-  // ============================================================
-  function openPlayerModal(team, index) {
-    state.selectedTeam = team;
+  // ===========================================
+  function openPlayerModal(side, index) {
+    const team = state.teams[side];
+    const player = team.players[index];
+
+    if (!player) return;
+
+    // Block if expelled
+    if (player.redCard || player.yellowCards >= 2) {
+      log("Cannot perform actions on expelled player");
+      return;
+    }
+
+    state.selectedTeam = side;
     state.selectedPlayer = index;
 
-    const player = state.roster[team][index];
+    // Update modal content
+    if (el.playerModalNumber) el.playerModalNumber.textContent = pad2(player.number);
+    if (el.playerModalName) el.playerModalName.textContent = player.name || "Sem nome";
+    if (el.playerModalTeam) el.playerModalTeam.textContent = side === "home" ? "Casa" : "Visitante";
 
-    if (el.playerModalInfo) {
-      el.playerModalInfo.innerHTML = `
-        <div style="font-size: 24px; font-weight: 800;">${String(player.number).padStart(2, "0")}</div>
-        <div style="font-size: 16px;">${player.name || "Sem nome"}</div>
-        <div style="font-size: 12px; color: #888;">${team === "home" ? "Casa" : "Visitante"}</div>
-      `;
+    // Stats
+    if (el.playerModalStats) {
+      el.playerModalStats.innerHTML = "";
+
+      if (player.goals > 0) {
+        el.playerModalStats.innerHTML += `<span class="badge badge--goal">${player.goals} gol${player.goals > 1 ? "s" : ""}</span>`;
+      }
+      if (player.yellowCards > 0) {
+        el.playerModalStats.innerHTML += `<span class="badge badge--yellow">${player.yellowCards} amarelo${player.yellowCards > 1 ? "s" : ""}</span>`;
+      }
+    }
+
+    // Disable sub button if already substituted
+    if (el.btnPlayerSub) {
+      el.btnPlayerSub.disabled = player.substitutedOut;
     }
 
     showModal(el.playerModal);
@@ -927,55 +1387,136 @@
     state.selectedPlayer = null;
   }
 
-  function playerAction(action) {
+  async function playerGoal() {
     if (state.selectedTeam === null || state.selectedPlayer === null) return;
 
-    const player = state.roster[state.selectedTeam][state.selectedPlayer];
+    const team = state.teams[state.selectedTeam];
+    const player = team.players[state.selectedPlayer];
 
-    switch (action) {
-      case "goal":
-        player.goals++;
-        changeScore(state.selectedTeam, 1);
-        break;
-      case "yellow":
-        player.yellowCards++;
-        if (player.yellowCards >= 2) {
-          player.redCard = true;
-        }
-        break;
-      case "red":
-        player.redCard = true;
-        break;
-      case "sub":
-        openSubModal();
-        return;
+    if (!player || player.redCard || player.yellowCards >= 2) return;
+
+    // Increment player goals
+    player.goals++;
+
+    // Increment team score
+    state.score[state.selectedTeam]++;
+
+    // Toggle icon side if needed (when multiple badges)
+    if (player.yellowCards > 0 || player.substitutedOut) {
+      player.cardIconSide = player.cardIconSide === "left" ? "right" : "left";
     }
 
-    renderRoster();
+    // Add history event
+    addHistoryEvent("goal", {
+      team: state.selectedTeam,
+      playerNumber: player.number,
+      playerName: player.name,
+      minute: formatTime(state.timer.elapsedMs),
+      totalGoals: player.goals
+    });
+
+    // Update UI
+    updateScoreUI();
+    updateAggregateUI();
+    renderPlayersLists();
+
+    // Sync
+    await syncScore();
+    await syncPlayer(state.selectedTeam, state.selectedPlayer);
+
     saveState();
     closePlayerModal();
-    log("Player action", { action, player: player.name });
+    log(`Goal: ${player.name} (${player.goals} total)`);
   }
 
-  // ============================================================
-  // SUBSTITUTION MODAL
-  // ============================================================
-  function openSubModal() {
-    hideModal(el.playerModal);
+  async function playerYellowCard() {
+    if (state.selectedTeam === null || state.selectedPlayer === null) return;
 
-    // Load available players from roster data
-    const rosterData = window.SPIDERKONG_ROSTER?.players || [];
+    const team = state.teams[state.selectedTeam];
+    const player = team.players[state.selectedPlayer];
 
-    if (el.subList) {
-      el.subList.innerHTML = "";
-      rosterData.forEach((p, i) => {
-        const item = document.createElement("div");
-        item.className = "rosterItem";
-        item.innerHTML = `<span class="rosterName">${p.name}</span>`;
-        item.onclick = () => selectSubstitute(i, p);
-        el.subList.appendChild(item);
+    if (!player || player.redCard) return;
+
+    player.yellowCards++;
+
+    // Add history event
+    addHistoryEvent("yellow", {
+      team: state.selectedTeam,
+      playerNumber: player.number,
+      playerName: player.name,
+      minute: formatTime(state.timer.elapsedMs),
+      totalYellows: player.yellowCards
+    });
+
+    // Check for second yellow
+    if (player.yellowCards >= 2) {
+      player.redCard = true;
+
+      addHistoryEvent("second_yellow", {
+        team: state.selectedTeam,
+        playerNumber: player.number,
+        playerName: player.name,
+        minute: formatTime(state.timer.elapsedMs)
       });
+
+      log(`Second yellow -> Red card: ${player.name}`);
     }
+
+    renderPlayersLists();
+    await syncPlayer(state.selectedTeam, state.selectedPlayer);
+
+    saveState();
+    closePlayerModal();
+    log(`Yellow card: ${player.name} (${player.yellowCards} total)`);
+  }
+
+  async function playerRedCard() {
+    if (state.selectedTeam === null || state.selectedPlayer === null) return;
+
+    const team = state.teams[state.selectedTeam];
+    const player = team.players[state.selectedPlayer];
+
+    if (!player || player.redCard) return;
+
+    player.redCard = true;
+
+    addHistoryEvent("red", {
+      team: state.selectedTeam,
+      playerNumber: player.number,
+      playerName: player.name,
+      minute: formatTime(state.timer.elapsedMs)
+    });
+
+    renderPlayersLists();
+    await syncPlayer(state.selectedTeam, state.selectedPlayer);
+
+    saveState();
+    closePlayerModal();
+    log(`Red card: ${player.name}`);
+  }
+
+  function openSubModal() {
+    if (state.selectedTeam === null || state.selectedPlayer === null) return;
+
+    const team = state.teams[state.selectedTeam];
+    const player = team.players[state.selectedPlayer];
+
+    if (!player || player.redCard || player.yellowCards >= 2 || player.substitutedOut) {
+      log("Cannot substitute this player");
+      return;
+    }
+
+    closePlayerModal();
+
+    // Update sub modal
+    if (el.subModalOutName) {
+      el.subModalOutName.textContent = `${pad2(player.number)} - ${player.name || "Sem nome"}`;
+    }
+
+    // Clear inputs
+    if (el.subInNumber) el.subInNumber.value = "";
+    if (el.subInName) el.subInName.value = "";
+    if (el.btnSubConfirm) el.btnSubConfirm.disabled = true;
 
     showModal(el.subModal);
   }
@@ -984,182 +1525,381 @@
     hideModal(el.subModal);
   }
 
-  function selectSubstitute(index, playerData) {
-    // Mark all as not selected
-    el.subList?.querySelectorAll(".rosterItem").forEach((item) => {
-      item.classList.remove("selected");
-    });
-
-    // Mark selected
-    el.subList?.querySelectorAll(".rosterItem")[index]?.classList.add("selected");
-
-    // Enable confirm button
+  function validateSubInputs() {
+    const name = el.subInName?.value?.trim() || "";
     if (el.btnSubConfirm) {
-      el.btnSubConfirm.disabled = false;
-      el.btnSubConfirm.onclick = () => confirmSubstitution(playerData);
+      el.btnSubConfirm.disabled = name.length === 0;
     }
   }
 
-  function confirmSubstitution(newPlayer) {
+  async function confirmSubstitution() {
     if (state.selectedTeam === null || state.selectedPlayer === null) return;
 
-    const oldPlayer = state.roster[state.selectedTeam][state.selectedPlayer];
-    oldPlayer.substitutedOut = true;
+    const team = state.teams[state.selectedTeam];
+    const playerOut = team.players[state.selectedPlayer];
 
-    // Create new player in the slot
-    state.roster[state.selectedTeam][state.selectedPlayer] = {
-      ...createPlayer(oldPlayer.slot),
-      name: newPlayer.name,
-      number: newPlayer.number || oldPlayer.slot
-    };
+    if (!playerOut) return;
 
-    renderRoster();
+    const inNumber = parseInt(el.subInNumber?.value, 10) || team.players.length + 1;
+    const inName = el.subInName?.value?.trim() || "";
+
+    if (!inName) {
+      log("Substitution requires player name");
+      return;
+    }
+
+    // Mark player as substituted out
+    playerOut.substitutedOut = true;
+
+    // Create new player and add to team
+    const newPlayer = createPlayer(team.players.length + 1, inNumber, inName);
+    newPlayer.isEntered = true;
+    team.players.push(newPlayer);
+
+    // Add history event
+    addHistoryEvent("substitution", {
+      team: state.selectedTeam,
+      minute: formatTime(state.timer.elapsedMs),
+      outNumber: playerOut.number,
+      outName: playerOut.name,
+      inNumber: newPlayer.number,
+      inName: newPlayer.name
+    });
+
+    renderPlayersLists();
+    await syncPlayers();
+
     saveState();
     closeSubModal();
-    log("Substitution", { out: oldPlayer.name, in: newPlayer.name });
+    log(`Substitution: ${playerOut.name} -> ${newPlayer.name}`);
   }
 
-  // ============================================================
-  // MODAL HELPERS
-  // ============================================================
-  function showModal(modal) {
-    if (modal) {
-      modal.setAttribute("aria-hidden", "false");
+  // ===========================================
+  // HISTORY
+  // ===========================================
+  function addHistoryEvent(type, data) {
+    const event = {
+      id: uuid(),
+      type,
+      data,
+      timestamp: Date.now()
+    };
+
+    state.history.unshift(event);
+
+    // Limit history size
+    const maxEvents = CFG.history?.maxEvents || 50;
+    if (state.history.length > maxEvents) {
+      state.history = state.history.slice(0, maxEvents);
     }
+
+    renderHistory();
+    return event;
   }
 
-  function hideModal(modal) {
-    if (modal) {
-      modal.setAttribute("aria-hidden", "true");
+  function renderHistory() {
+    if (!el.historyList) return;
+
+    if (state.history.length === 0) {
+      el.historyList.innerHTML = '<div class="text-center text-muted text-sm">Nenhum evento registrado</div>';
+      return;
     }
+
+    el.historyList.innerHTML = "";
+
+    state.history.forEach((event) => {
+      const item = document.createElement("div");
+      item.className = "historyItem";
+
+      const time = document.createElement("span");
+      time.className = "historyTime";
+      time.textContent = event.data.minute || "--:--";
+
+      const icon = document.createElement("span");
+      icon.className = "historyIcon";
+
+      const text = document.createElement("span");
+      text.className = "historyText";
+
+      const teamBadge = document.createElement("span");
+      teamBadge.className = "historyTeam";
+      teamBadge.textContent = event.data.team === "home" ?
+        (state.teams.home.sigla || "CAS") :
+        (state.teams.away.sigla || "VIS");
+
+      switch (event.type) {
+        case "goal":
+          icon.classList.add("goal");
+          icon.innerHTML = '<span class="material-symbols-outlined">sports_soccer</span>';
+          text.textContent = `Gol de ${event.data.playerName} (${event.data.totalGoals})`;
+          break;
+        case "yellow":
+          icon.classList.add("yellow");
+          icon.innerHTML = '<span class="material-symbols-outlined">rectangle</span>';
+          text.textContent = `Amarelo para ${event.data.playerName}`;
+          break;
+        case "second_yellow":
+          icon.classList.add("red");
+          icon.innerHTML = '<span class="material-symbols-outlined">rectangle</span>';
+          text.textContent = `2o amarelo = Vermelho: ${event.data.playerName}`;
+          break;
+        case "red":
+          icon.classList.add("red");
+          icon.innerHTML = '<span class="material-symbols-outlined">rectangle</span>';
+          text.textContent = `Vermelho direto: ${event.data.playerName}`;
+          break;
+        case "substitution":
+          icon.classList.add("sub");
+          icon.innerHTML = '<span class="material-symbols-outlined">swap_horiz</span>';
+          text.textContent = `${event.data.outName} -> ${event.data.inName}`;
+          break;
+        default:
+          text.textContent = event.type;
+      }
+
+      item.appendChild(time);
+      item.appendChild(icon);
+      item.appendChild(text);
+      item.appendChild(teamBadge);
+
+      el.historyList.appendChild(item);
+    });
   }
 
-  // ============================================================
-  // SKINS
-  // ============================================================
-  function loadSkins() {
-    const skins = CFG.skins || ["generico"];
-
-    if (el.skinSelect) {
-      el.skinSelect.innerHTML = "";
-      skins.forEach((skin) => {
-        const opt = document.createElement("option");
-        opt.value = skin;
-        opt.textContent = skin.charAt(0).toUpperCase() + skin.slice(1);
-        el.skinSelect.appendChild(opt);
-      });
-      el.skinSelect.value = state.currentSkin;
-    }
-  }
-
-  function changeSkin(skin) {
-    state.currentSkin = skin;
+  function clearHistory() {
+    state.history = [];
+    renderHistory();
     saveState();
-    log("Skin changed", { skin });
-
-    // Re-sync with new skin
-    syncAll();
+    log("History cleared");
   }
 
-  // ============================================================
-  // STORAGE
-  // ============================================================
-  function saveState() {
-    try {
-      const data = {
-        teams: state.teams,
-        score: state.score,
-        aggregate: state.aggregate,
-        timer: {
-          elapsedMs: state.timer.elapsedMs,
-          period: state.timer.period
-        },
-        penalties: state.penalties,
-        roster: state.roster,
-        currentSkin: state.currentSkin
-      };
+  // ===========================================
+  // RESETS
+  // ===========================================
+  async function resetPartial() {
+    if (!confirm("Zerar placar, cronometro e penaltis?")) return;
 
-      localStorage.setItem(CFG.storageKey || "spiderkong_state", JSON.stringify(data));
-    } catch (err) {
-      log("Error saving state", { error: err.message });
+    // Reset score
+    state.score.home = 0;
+    state.score.away = 0;
+
+    // Reset timer
+    pauseTimer();
+    state.timer.elapsedMs = 0;
+    state.timer.period = "1T";
+
+    // Reset penalties
+    state.penalties.active = false;
+    state.penalties.home = createPenalties();
+    state.penalties.away = createPenalties();
+
+    // Reset player goals (but keep other stats)
+    for (const side of ["home", "away"]) {
+      state.teams[side].players.forEach((player) => {
+        player.goals = 0;
+      });
     }
+
+    // Update UI
+    updateScoreUI();
+    updateTimerUI();
+    updateAggregateUI();
+    setPeriod("1T");
+    renderPenalties();
+    renderPlayersLists();
+
+    // Sync
+    await syncAll();
+
+    saveState();
+    log("Partial reset complete");
+  }
+
+  async function resetTotal() {
+    if (!confirm("Resetar TUDO (times, placar, escalacao)?")) return;
+
+    // Keep current skin
+    const currentSkin = state.currentSkin;
+
+    // Reset teams
+    state.teams.home = createTeam();
+    state.teams.away = createTeam();
+
+    // Reset score
+    state.score.home = 0;
+    state.score.away = 0;
+
+    // Reset aggregate
+    state.aggregate.enabled = false;
+    state.aggregate.home = 0;
+    state.aggregate.away = 0;
+
+    // Reset timer
+    pauseTimer();
+    state.timer.elapsedMs = 0;
+    state.timer.period = "1T";
+
+    // Reset penalties
+    state.penalties.active = false;
+    state.penalties.home = createPenalties();
+    state.penalties.away = createPenalties();
+
+    // Clear history
+    state.history = [];
+
+    // Restore skin
+    state.currentSkin = currentSkin;
+
+    // Update all UI
+    updateScoreUI();
+    updateTimerUI();
+    updateAggregateUI();
+    updateScoreboardDisplay();
+    setPeriod("1T");
+    toggleAggregate(); // Turn off if on
+    if (state.aggregate.enabled) toggleAggregate();
+    renderRosterInputs();
+    renderPlayersLists();
+    renderPenalties();
+    renderHistory();
+
+    // Clear form inputs
+    if (el.homeTeamName) el.homeTeamName.value = "";
+    if (el.awayTeamName) el.awayTeamName.value = "";
+    if (el.homeTeamSigla) el.homeTeamSigla.value = "";
+    if (el.awayTeamSigla) el.awayTeamSigla.value = "";
+    if (el.homeCoach) el.homeCoach.value = "";
+    if (el.awayCoach) el.awayCoach.value = "";
+    if (el.homeTeamSelect) el.homeTeamSelect.selectedIndex = 0;
+    if (el.awayTeamSelect) el.awayTeamSelect.selectedIndex = 0;
+
+    // Sync
+    await syncAll();
+
+    saveState();
+    log("Total reset complete");
+  }
+
+  // ===========================================
+  // STORAGE
+  // ===========================================
+  let saveTimeout = null;
+
+  function saveState() {
+    clearTimeout(saveTimeout);
+
+    saveTimeout = setTimeout(() => {
+      try {
+        const data = {
+          version: state.version,
+          timestamp: Date.now(),
+          currentSkin: state.currentSkin,
+          teams: state.teams,
+          score: state.score,
+          aggregate: state.aggregate,
+          timer: {
+            elapsedMs: state.timer.elapsedMs,
+            period: state.timer.period,
+            running: state.timer.running,
+            startedAt: state.timer.startedAt
+          },
+          penalties: state.penalties,
+          history: state.history
+        };
+
+        const json = JSON.stringify(data);
+        const key = CFG.storage?.key || "spiderkong_state";
+
+        localStorage.setItem(key, json);
+      } catch (err) {
+        log("Error saving state", err.message);
+      }
+    }, CFG.storage?.autoSaveDebounceMs || 500);
   }
 
   function loadState() {
     try {
-      const raw = localStorage.getItem(CFG.storageKey || "spiderkong_state");
-      if (!raw) return;
+      const key = CFG.storage?.key || "spiderkong_state";
+      const json = localStorage.getItem(key);
 
-      const data = JSON.parse(raw);
+      if (!json) {
+        log("No saved state found");
+        return false;
+      }
 
+      const data = JSON.parse(json);
+
+      // Version check
+      if (data.version !== state.version) {
+        log(`State version mismatch: ${data.version} vs ${state.version}`);
+        return false;
+      }
+
+      // Restore state
+      if (data.currentSkin) state.currentSkin = data.currentSkin;
       if (data.teams) {
         state.teams = data.teams;
-        if (el.homeTeamName) el.homeTeamName.value = data.teams.home?.name || "";
-        if (el.homeTeamSigla) el.homeTeamSigla.value = data.teams.home?.sigla || "";
-        if (el.homeCoach) el.homeCoach.value = data.teams.home?.coach || "";
-        if (el.awayTeamName) el.awayTeamName.value = data.teams.away?.name || "";
-        if (el.awayTeamSigla) el.awayTeamSigla.value = data.teams.away?.sigla || "";
-        if (el.awayCoach) el.awayCoach.value = data.teams.away?.coach || "";
       }
-
-      if (data.score) {
-        state.score = data.score;
-        updateScoreUI();
-      }
-
-      if (data.aggregate) {
-        state.aggregate = data.aggregate;
-        if (state.aggregate.enabled) {
-          toggleAggregate();
-        }
-        updateAggregateUI();
-      }
-
+      if (data.score) state.score = data.score;
+      if (data.aggregate) state.aggregate = data.aggregate;
       if (data.timer) {
         state.timer.elapsedMs = data.timer.elapsedMs || 0;
         state.timer.period = data.timer.period || "1T";
-        updateTimerUI();
-        setPeriod(state.timer.period);
-      }
 
-      if (data.penalties) {
-        state.penalties = data.penalties;
-        renderPenalties();
+        // Resume timer if it was running
+        if (data.timer.running && data.timer.startedAt) {
+          state.timer.elapsedMs = Date.now() - data.timer.startedAt;
+          startTimer();
+        }
       }
-
-      if (data.roster) {
-        state.roster = data.roster;
-        renderRoster();
-      }
-
-      if (data.currentSkin) {
-        state.currentSkin = data.currentSkin;
-        if (el.skinSelect) el.skinSelect.value = data.currentSkin;
-      }
+      if (data.penalties) state.penalties = data.penalties;
+      if (data.history) state.history = data.history;
 
       log("State loaded from storage");
+      return true;
     } catch (err) {
-      log("Error loading state", { error: err.message });
+      log("Error loading state", err.message);
+      return false;
     }
   }
 
-  // ============================================================
-  // EVENT BINDINGS
-  // ============================================================
-  function bindEvents() {
-    // Scene select
-    el.sceneSelect?.addEventListener("change", (e) => setScene(e.target.value));
+  // ===========================================
+  // UI HELPERS
+  // ===========================================
+  function showModal(modal) {
+    if (modal) modal.setAttribute("aria-hidden", "false");
+  }
 
-    // Skin select
+  function hideModal(modal) {
+    if (modal) modal.setAttribute("aria-hidden", "true");
+  }
+
+  function toggleSection(body, button) {
+    if (!body) return;
+
+    const isHidden = body.classList.toggle("isHidden");
+    const icon = button?.querySelector(".material-symbols-outlined");
+
+    if (icon) {
+      icon.textContent = isHidden ? "expand_more" : "expand_less";
+    }
+  }
+
+  // ===========================================
+  // EVENT BINDINGS
+  // ===========================================
+  function bindEvents() {
+    // Scene/Skin selects
+    el.sceneSelect?.addEventListener("change", (e) => setScene(e.target.value));
     el.skinSelect?.addEventListener("change", (e) => changeSkin(e.target.value));
 
     // Team selects
-    el.homeTeamSelect?.addEventListener("change", () => applyTeamFromSelect("home"));
-    el.awayTeamSelect?.addEventListener("change", () => applyTeamFromSelect("away"));
+    el.homeTeamSelect?.addEventListener("change", () => onTeamSelect("home"));
+    el.awayTeamSelect?.addEventListener("change", () => onTeamSelect("away"));
 
     // Team apply buttons
-    el.btnApplyHome?.addEventListener("click", () => applyTeamFromInputs("home"));
-    el.btnApplyAway?.addEventListener("click", () => applyTeamFromInputs("away"));
+    el.btnApplyHome?.addEventListener("click", () => applyTeam("home"));
+    el.btnApplyAway?.addEventListener("click", () => applyTeam("away"));
 
     // Score buttons
     el.btnScoreHomeMinus?.addEventListener("click", () => changeScore("home", -1));
@@ -1178,71 +1918,109 @@
     // Timer
     el.btnTimerStart?.addEventListener("click", startTimer);
     el.btnTimerPause?.addEventListener("click", pauseTimer);
-    el.btnTimerResume?.addEventListener("click", startTimer);
     el.btnTimerReset?.addEventListener("click", resetTimer);
     el.btnTimerSet?.addEventListener("click", setTimerFromInput);
 
     // Period buttons
-    el.btnStatus1T?.addEventListener("click", () => setPeriod("1T"));
-    el.btnStatus2T?.addEventListener("click", () => setPeriod("2T"));
-    el.btnStatusInt?.addEventListener("click", () => setPeriod("INT"));
-    el.btnStatusPro?.addEventListener("click", () => setPeriod("PRO"));
-    el.btnStatusPen?.addEventListener("click", () => setPeriod("PEN"));
+    $$("[data-period]").forEach((btn) => {
+      btn.addEventListener("click", () => setPeriod(btn.dataset.period));
+    });
 
     // Penalties
-    el.btnPenaltyAdd?.addEventListener("click", addPenalty);
     el.btnPenaltyReset?.addEventListener("click", resetPenalties);
 
-    // Roster toggle
-    el.btnToggleRoster?.addEventListener("click", toggleRoster);
-    el.btnApplyRoster?.addEventListener("click", () => {
-      syncAll();
-      log("Roster applied");
-    });
+    // Roster
+    el.btnToggleRoster?.addEventListener("click", () => toggleSection(el.rosterBody, el.btnToggleRoster));
+    el.btnApplyRoster?.addEventListener("click", applyRoster);
+    el.btnClearRoster?.addEventListener("click", clearRoster);
+
+    // Players
+    el.btnTogglePlayers?.addEventListener("click", () => toggleSection(el.playersBody, el.btnTogglePlayers));
+
+    // History
+    el.btnToggleHistory?.addEventListener("click", () => toggleSection(el.historyBody, el.btnToggleHistory));
+    el.btnClearHistory?.addEventListener("click", clearHistory);
 
     // Actions
     el.btnSyncObs?.addEventListener("click", syncAll);
     el.btnReconnect?.addEventListener("click", () => wsConnect(true));
+    el.btnResetPartial?.addEventListener("click", resetPartial);
+    el.btnResetTotal?.addEventListener("click", resetTotal);
 
     // Player modal
     el.btnPlayerModalClose?.addEventListener("click", closePlayerModal);
-    el.btnPlayerGoal?.addEventListener("click", () => playerAction("goal"));
-    el.btnPlayerYellow?.addEventListener("click", () => playerAction("yellow"));
-    el.btnPlayerRed?.addEventListener("click", () => playerAction("red"));
-    el.btnPlayerSub?.addEventListener("click", () => playerAction("sub"));
+    el.btnPlayerGoal?.addEventListener("click", playerGoal);
+    el.btnPlayerYellow?.addEventListener("click", playerYellowCard);
+    el.btnPlayerRed?.addEventListener("click", playerRedCard);
+    el.btnPlayerSub?.addEventListener("click", openSubModal);
 
     // Sub modal
     el.btnSubModalClose?.addEventListener("click", closeSubModal);
+    el.subInName?.addEventListener("input", validateSubInputs);
+    el.btnSubConfirm?.addEventListener("click", confirmSubstitution);
 
-    // Sub search
-    el.subSearch?.addEventListener("input", (e) => {
-      const term = e.target.value.toLowerCase();
-      el.subList?.querySelectorAll(".rosterItem").forEach((item) => {
-        const name = item.textContent.toLowerCase();
-        item.style.display = name.includes(term) ? "" : "none";
-      });
+    // Close modals on backdrop click
+    el.playerModal?.addEventListener("click", (e) => {
+      if (e.target === el.playerModal) closePlayerModal();
+    });
+    el.subModal?.addEventListener("click", (e) => {
+      if (e.target === el.subModal) closeSubModal();
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closePlayerModal();
+        closeSubModal();
+      }
     });
   }
 
-  // ============================================================
+  // ===========================================
   // INITIALIZATION
-  // ============================================================
+  // ===========================================
   function init() {
-    log("Initializing SpiderKong Panel");
+    log("Initializing SpiderKong Panel...");
 
-    // Load data
-    loadTeamsData();
-    loadSkins();
-    loadState();
+    // Load saved state first
+    const hasState = loadState();
 
-    // Render initial UI
-    renderRoster();
-    renderPenalties();
-    updateTimerUI();
+    // Initialize UI based on state
     updateScoreUI();
+    updateTimerUI();
     updateAggregateUI();
+    updateScoreboardDisplay();
 
-    // Bind events
+    // Restore aggregate UI
+    if (state.aggregate.enabled) {
+      if (el.btnToggleAgg) {
+        el.btnToggleAgg.classList.add("active");
+        el.btnToggleAgg.innerHTML = `
+          <span class="material-symbols-outlined">calculate</span>
+          Agregado: ON
+        `;
+      }
+      if (el.aggControls) {
+        el.aggControls.classList.remove("isHidden");
+      }
+    }
+
+    // Restore period
+    setPeriod(state.timer.period);
+
+    // Render roster inputs
+    renderRosterInputs();
+
+    // Render players lists
+    renderPlayersLists();
+
+    // Render penalties
+    renderPenalties();
+
+    // Render history
+    renderHistory();
+
+    // Bind all events
     bindEvents();
 
     // Connect to OBS
@@ -1251,7 +2029,7 @@
     log("SpiderKong Panel initialized");
   }
 
-  // Start
+  // Start when DOM is ready
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
   } else {

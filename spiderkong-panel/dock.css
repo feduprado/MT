@@ -1,46 +1,93 @@
+/**
+ * SpiderKong Panel - Theme: Internacional (Red)
+ * Color palette based on Sport Club Internacional
+ */
+
 :root {
   color-scheme: dark;
   --font: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+
+  /* Internacional Colors */
+  --inter-red: #E31C23;
+  --inter-red-dark: #B71C1C;
+  --inter-red-darker: #8B0000;
+  --inter-red-light: #FF5252;
+  --inter-white: #FFFFFF;
+
+  /* Layout */
   --pad: 8px;
   --gap: 8px;
   --hControl: 40px;
   --hPill: 28px;
-  --radius-card: 18px;
-  --radius-inner: 14px;
-  --radius-btn: 12px;
+  --radius-card: 16px;
+  --radius-inner: 12px;
+  --radius-btn: 10px;
   --radius-pill: 999px;
-  --bg0: #0B0B0C;
-  --bgCard: #121212;
-  --borderCard: #333333;
+
+  /* Dark Theme with Red Accents */
+  --bg0: #0A0A0A;
+  --bg1: #111111;
+  --bgCard: #141414;
+  --bgCardHover: #1A1A1A;
+  --borderCard: #2A2A2A;
+  --borderCardHover: #3A3A3A;
+
   --surface0: #1A1A1A;
-  --surface1: #252525;
+  --surface1: #222222;
+  --surface2: #2A2A2A;
+
   --stroke: #333333;
   --stroke2: #444444;
-  --txt: #F2F2F2;
-  --txtMuted: #888888;
-  --txtDim: #555555;
-  --accentRed: #B25F5B;
-  --accentYellow: #E6B84A;
-  --accentGreen: #4CAF50;
+
+  /* Text */
+  --txt: #F5F5F5;
+  --txtMuted: #999999;
+  --txtDim: #666666;
+
+  /* Accent Colors */
+  --accent: var(--inter-red);
+  --accentHover: var(--inter-red-light);
+  --accentDark: var(--inter-red-dark);
+
+  /* Semantic Colors */
+  --colorGoal: #4CAF50;
+  --colorGoalBg: rgba(76, 175, 80, 0.15);
+  --colorYellow: #FFC107;
+  --colorYellowBg: rgba(255, 193, 7, 0.15);
+  --colorRed: #F44336;
+  --colorRedBg: rgba(244, 67, 54, 0.15);
+  --colorSub: #2196F3;
+  --colorSubBg: rgba(33, 150, 243, 0.15);
+
+  /* Status */
+  --statusOn: #4CAF50;
+  --statusOff: #F44336;
+  --statusWarn: #FF9800;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 html, body {
-  margin: 0;
   width: 100%;
   height: 100%;
   font-family: var(--font);
+  font-size: 14px;
   background: var(--bg0);
   color: var(--txt);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Material Icons */
 .material-symbols-outlined {
   font-family: "Material Symbols Outlined";
   font-weight: normal;
   font-style: normal;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
@@ -49,7 +96,9 @@ html, body {
   flex-shrink: 0;
 }
 
-/* App Shell */
+/* ============================================
+   APP SHELL
+   ============================================ */
 .appShell {
   position: relative;
   width: 100%;
@@ -59,41 +108,46 @@ html, body {
   min-height: 0;
 }
 
-/* Header */
+/* ============================================
+   HEADER
+   ============================================ */
 .headerRow {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px;
-  border-bottom: 1px solid var(--borderCard);
-  background: var(--bgCard);
-  height: 60px;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, var(--inter-red-dark) 0%, var(--inter-red-darker) 100%);
+  border-bottom: 2px solid var(--inter-red);
+  height: 56px;
   flex-shrink: 0;
 }
 
 .brand {
   display: flex;
   align-items: center;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .logoType {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
-  letter-spacing: 0.1em;
-  color: var(--accentYellow);
+  letter-spacing: 0.15em;
+  color: var(--inter-white);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.headerControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .sceneSelectWrap,
 .skinSelectWrap {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-}
-
-.skinSelectWrap {
-  flex: 0.5;
+  min-width: 120px;
 }
 
 #sceneSelect,
@@ -101,90 +155,148 @@ html, body {
   width: 100%;
   height: 32px;
   font-size: 12px;
-  background-color: var(--bg0);
-  border-color: var(--stroke);
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  border-radius: var(--radius-btn);
+}
+
+#sceneSelect:focus,
+#skinSelect:focus {
+  border-color: var(--inter-white);
+  outline: none;
 }
 
 .statusGroup {
   display: flex;
   align-items: center;
-  flex-shrink: 0;
+  gap: 8px;
 }
 
-/* Pills */
+/* ============================================
+   PILLS / STATUS
+   ============================================ */
 .pill {
   height: var(--hPill);
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   padding: 0 12px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--stroke);
-  background: var(--surface0);
-  color: var(--txtMuted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   white-space: nowrap;
+  transition: all 0.2s ease;
 }
 
 .pill--off {
-  border-color: rgba(178, 95, 91, 0.4);
-  color: #B25F5B;
+  background: rgba(244, 67, 54, 0.2);
+  border: 1px solid rgba(244, 67, 54, 0.5);
+  color: #FF8A80;
 }
 
 .pill--on {
-  background: #DDD;
-  color: #000;
-  border-color: #FFF;
+  background: rgba(76, 175, 80, 0.2);
+  border: 1px solid rgba(76, 175, 80, 0.5);
+  color: #A5D6A7;
 }
 
-/* Main Content */
+.pill--connecting {
+  background: rgba(255, 152, 0, 0.2);
+  border: 1px solid rgba(255, 152, 0, 0.5);
+  color: #FFCC80;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ============================================
+   MAIN CONTENT
+   ============================================ */
 .mainContent {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
-  padding: var(--pad);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding: 16px;
+  background: var(--bg0);
+}
+
+.mainContent::-webkit-scrollbar {
+  width: 8px;
+}
+
+.mainContent::-webkit-scrollbar-track {
+  background: var(--bg1);
+}
+
+.mainContent::-webkit-scrollbar-thumb {
+  background: var(--inter-red-dark);
+  border-radius: 4px;
+}
+
+.mainContent::-webkit-scrollbar-thumb:hover {
+  background: var(--inter-red);
 }
 
 #mainPanelsWrap {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
-/* Cards */
+/* ============================================
+   CARDS
+   ============================================ */
 .card {
   border-radius: var(--radius-card);
   background: var(--bgCard);
   border: 1px solid var(--borderCard);
-  padding: 16px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--borderCardHover);
 }
 
 .cardHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 4px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, rgba(227, 28, 35, 0.1) 0%, transparent 100%);
+  border-bottom: 1px solid var(--borderCard);
 }
 
 .cardTitle {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: #FFF;
+  color: var(--inter-red-light);
 }
 
-/* Forms */
-select, input {
+.cardBody {
+  padding: 16px;
+}
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ============================================
+   FORMS
+   ============================================ */
+select, input, textarea {
   width: 100%;
   height: var(--hControl);
   padding: 0 12px;
@@ -195,137 +307,185 @@ select, input {
   outline: none;
   font-family: var(--font);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+select:hover, input:hover {
+  border-color: var(--stroke2);
 }
 
 select:focus, input:focus {
-  border-color: #666;
-  color: #FFF;
+  border-color: var(--inter-red);
+  box-shadow: 0 0 0 2px rgba(227, 28, 35, 0.2);
 }
 
 ::placeholder {
   color: var(--txtDim);
 }
 
-/* Buttons */
+input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--txtMuted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   height: var(--hControl);
-  padding: 0 14px;
+  padding: 0 16px;
   border-radius: var(--radius-btn);
   border: 1px solid var(--stroke2);
-  background: var(--surface0);
-  color: #CCC;
+  background: var(--surface1);
+  color: var(--txt);
+  font-family: var(--font);
   font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .btn:hover {
-  background: var(--surface1);
-  color: #FFF;
-  border-color: #555;
+  background: var(--surface2);
+  border-color: var(--stroke2);
+  transform: translateY(-1px);
 }
 
 .btn:active {
-  transform: translateY(1px);
+  transform: translateY(0);
 }
 
-.btn[disabled] {
+.btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
 }
 
+/* Primary Button - Red */
 .btn--primary {
-  background: #E6E6E6;
-  color: #000;
-  border-color: #FFF;
+  background: var(--inter-red);
+  border-color: var(--inter-red);
+  color: white;
 }
 
 .btn--primary:hover {
-  background: #FFF;
+  background: var(--inter-red-light);
+  border-color: var(--inter-red-light);
 }
 
-.btn--red, .btn--danger {
-  background: rgba(178, 95, 91, 0.15);
-  border-color: rgba(178, 95, 91, 0.4);
-  color: #D68C88;
+/* Secondary Button */
+.btn--secondary {
+  background: transparent;
+  border-color: var(--inter-red);
+  color: var(--inter-red-light);
 }
 
-.btn--red:hover, .btn--danger:hover {
-  background: rgba(178, 95, 91, 0.3);
-  color: #FFF;
+.btn--secondary:hover {
+  background: rgba(227, 28, 35, 0.1);
 }
 
-.btn--yellow {
-  background: rgba(230, 184, 74, 0.15);
-  border-color: rgba(230, 184, 74, 0.4);
-  color: #E6B84A;
+/* Ghost Button */
+.btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--txtMuted);
 }
 
-.btn--yellow:hover {
-  background: rgba(230, 184, 74, 0.3);
-  color: #FFF;
+.btn--ghost:hover {
+  background: var(--surface1);
+  color: var(--txt);
 }
 
+/* Danger Button */
+.btn--danger {
+  background: var(--colorRedBg);
+  border-color: rgba(244, 67, 54, 0.3);
+  color: #FF8A80;
+}
+
+.btn--danger:hover {
+  background: rgba(244, 67, 54, 0.25);
+  border-color: rgba(244, 67, 54, 0.5);
+}
+
+/* Action Buttons */
 .btn--goal {
-  background: rgba(76, 175, 80, 0.15);
-  border-color: rgba(76, 175, 80, 0.4);
-  color: #4CAF50;
+  background: var(--colorGoalBg);
+  border-color: rgba(76, 175, 80, 0.3);
+  color: #81C784;
 }
 
 .btn--goal:hover {
-  background: rgba(76, 175, 80, 0.3);
-  color: #FFF;
+  background: rgba(76, 175, 80, 0.25);
 }
 
+.btn--yellow {
+  background: var(--colorYellowBg);
+  border-color: rgba(255, 193, 7, 0.3);
+  color: #FFD54F;
+}
+
+.btn--yellow:hover {
+  background: rgba(255, 193, 7, 0.25);
+}
+
+.btn--red {
+  background: var(--colorRedBg);
+  border-color: rgba(244, 67, 54, 0.3);
+  color: #FF8A80;
+}
+
+.btn--red:hover {
+  background: rgba(244, 67, 54, 0.25);
+}
+
+.btn--sub {
+  background: var(--colorSubBg);
+  border-color: rgba(33, 150, 243, 0.3);
+  color: #64B5F6;
+}
+
+.btn--sub:hover {
+  background: rgba(33, 150, 243, 0.25);
+}
+
+/* Round Buttons */
 .btn--round {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border-radius: 12px;
-  background: #333;
-  color: #DDD;
-  font-size: 20px;
+  font-size: 24px;
+  font-weight: 400;
 }
 
-.btn--round:hover {
-  background: #444;
-  color: #FFF;
-}
-
-.btn--round-small {
+.btn--round-sm {
   width: 32px;
   height: 32px;
   padding: 0;
-  border-radius: 50%;
-  background: #383838;
-  color: #FFF;
+  border-radius: 8px;
+  font-size: 18px;
 }
 
-.btn--round-small:hover {
-  background: #505050;
-}
-
-.btn--mini {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  background: #333;
-  border-radius: 4px;
-  font-weight: 700;
-}
-
-.btn--mini:hover {
-  background: #555;
-}
-
+/* Icon Button */
 .btn--icon {
   width: 36px;
   height: 36px;
@@ -334,51 +494,47 @@ select:focus, input:focus {
   border: none;
 }
 
+/* Toggle Button */
 .btn--toggle {
-  background: transparent;
-  border: 1px solid #444;
-  color: #888;
-  width: 100%;
-  justify-content: center;
-}
-
-.btn--toggle:hover {
-  background: #222;
-  color: #BBB;
+  background: var(--surface0);
+  border: 1px solid var(--stroke);
 }
 
 .btn--toggle.active {
-  background: var(--accentYellow);
-  color: #000;
-  border-color: var(--accentYellow);
+  background: var(--inter-red);
+  border-color: var(--inter-red);
+  color: white;
 }
 
+/* Status Buttons */
 .btn--status {
+  height: 36px;
+  padding: 0 12px;
   background: transparent;
-  border: 1px solid #333;
-  color: #888;
-  border-radius: 20px;
-  height: 32px;
+  border: 1px solid var(--stroke);
+  border-radius: 18px;
+  color: var(--txtMuted);
   font-size: 11px;
 }
 
 .btn--status:hover {
-  border-color: #666;
-  color: #FFF;
+  border-color: var(--inter-red);
+  color: var(--txt);
 }
 
 .btn--status.active {
-  background: #FFFFFF;
-  color: #000;
-  border-color: #FFF;
-  font-weight: 800;
+  background: var(--inter-red);
+  border-color: var(--inter-red);
+  color: white;
 }
 
 .full-width {
   width: 100%;
 }
 
-/* Teams */
+/* ============================================
+   TEAMS SECTION
+   ============================================ */
 .teamsGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -388,31 +544,52 @@ select:focus, input:focus {
 .teamBlock {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  padding: 16px;
+  background: var(--surface0);
+  border-radius: var(--radius-inner);
+  border: 1px solid var(--borderCard);
+}
+
+.teamBlock.away {
+  border-color: rgba(227, 28, 35, 0.3);
 }
 
 .teamLabel {
   font-size: 11px;
   font-weight: 800;
-  color: var(--txtMuted);
+  color: var(--inter-red-light);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--borderCard);
+  margin-bottom: 4px;
 }
 
-.teamSelect {
-  height: 36px;
+.teamLogoPreview {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin: 0 auto;
+  display: block;
+  border-radius: 8px;
+  background: var(--surface1);
+  padding: 8px;
 }
 
-/* Scoreboard */
+/* ============================================
+   SCOREBOARD
+   ============================================ */
 .scoreboardWrap {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  padding: 16px;
-  background: #181818;
-  border: 1px solid #333;
-  border-radius: 20px;
+  gap: 24px;
+  padding: 20px;
+  background: linear-gradient(180deg, var(--surface0) 0%, var(--bg1) 100%);
+  border-radius: var(--radius-inner);
+  border: 1px solid var(--borderCard);
 }
 
 .scoreGroup {
@@ -421,218 +598,260 @@ select:focus, input:focus {
   gap: 12px;
 }
 
+.scoreTeamInfo {
+  text-align: center;
+  min-width: 80px;
+}
+
+.scoreTeamSigla {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--txt);
+  letter-spacing: 0.1em;
+}
+
+.scoreTeamName {
+  font-size: 10px;
+  color: var(--txtMuted);
+  margin-top: 2px;
+}
+
 .scoreDisplay {
-  font-size: 36px;
-  font-weight: 700;
-  color: #FFF;
-  width: 50px;
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--inter-white);
+  min-width: 60px;
   text-align: center;
   line-height: 1;
+  text-shadow: 0 2px 8px rgba(227, 28, 35, 0.3);
 }
 
 .vsIcon {
-  color: #333;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
+  color: var(--inter-red);
 }
 
 .scoreActions {
   display: flex;
   justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
 }
 
-/* Aggregado */
+/* ============================================
+   AGGREGATE
+   ============================================ */
 .aggWrap {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
-  padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(227, 28, 35, 0.05);
+  border: 1px solid rgba(227, 28, 35, 0.2);
+  border-radius: var(--radius-inner);
+}
+
+.aggToggle {
+  width: 100%;
+  margin-bottom: 8px;
 }
 
 .aggControls {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 4px;
+  gap: 16px;
 }
 
 .aggSide {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 .aggDisplay {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 30px;
+  text-align: center;
+  min-width: 40px;
 }
 
 .aggLabel {
-  font-size: 8px;
-  color: #666;
-  font-weight: 800;
+  font-size: 9px;
+  color: var(--txtDim);
   text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.aggValue {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--txt);
 }
 
 .aggTotal {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: #000;
-  border: 1px solid #333;
-  padding: 2px 10px;
-  border-radius: 6px;
+  text-align: center;
+  padding: 8px 16px;
+  background: var(--bg0);
+  border-radius: 8px;
+  border: 1px solid var(--borderCard);
 }
 
-#aggTotalDisplay {
-  font-size: 14px;
+.aggTotalLabel {
+  font-size: 9px;
+  color: var(--txtDim);
+  text-transform: uppercase;
+}
+
+.aggTotalValue {
+  font-size: 16px;
   font-weight: 800;
-  color: #FFF;
-  letter-spacing: 1px;
+  color: var(--inter-red-light);
 }
 
-/* Timer */
+/* ============================================
+   TIMER
+   ============================================ */
 .timerWrap {
-  display: grid;
-  grid-template-columns: 1fr 100px;
+  display: flex;
   gap: 12px;
+  align-items: stretch;
 }
 
 .timerDisplayBox {
-  background: #000;
-  border: 1px solid #333;
-  border-radius: 14px;
-  height: 56px;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--bg0);
+  border: 2px solid var(--inter-red-dark);
+  border-radius: var(--radius-inner);
+  min-height: 64px;
 }
 
-#timerDisplay {
-  font-family: monospace, sans-serif;
-  font-size: 28px;
+.timerDisplay {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 36px;
   font-weight: 700;
-  color: #FFF;
+  color: var(--inter-white);
   letter-spacing: 0.1em;
+}
+
+.timerDisplay.running {
+  color: var(--statusOn);
+  animation: timerPulse 1s ease-in-out infinite;
+}
+
+@keyframes timerPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
 }
 
 .timerSetBox {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 100px;
 }
 
 .timerSetBox input {
-  height: 26px;
-  font-size: 11px;
+  height: 28px;
+  font-size: 12px;
   text-align: center;
   font-family: monospace;
-  background: #1A1A1A;
-  border-color: #333;
 }
 
 .timerSetBox .btn {
-  height: 24px;
+  height: 30px;
   font-size: 10px;
 }
 
 .timerActions {
   display: flex;
-  gap: 4px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
-.timerActions button {
+.timerActions .btn {
   flex: 1;
-  height: 36px;
 }
 
-.statusBar {
+.periodBar {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 8px;
+  margin-top: 12px;
 }
 
-/* Penalties */
-.penActions {
-  display: flex;
-  gap: 8px;
+/* ============================================
+   PENALTIES
+   ============================================ */
+.penaltiesCard {
+  border-color: var(--inter-red);
 }
 
 .penaltiesGrid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .penaltiesTeam {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 44px;
 }
 
 .penTag {
   font-size: 11px;
   font-weight: 800;
-  color: #888;
-  width: 36px;
+  color: var(--txtMuted);
+  min-width: 50px;
   text-align: right;
   letter-spacing: 0.05em;
 }
 
 .penShots {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   flex: 1;
-  overflow-x: auto;
-}
-
-.penShots::-webkit-scrollbar {
-  display: none;
 }
 
 .penBtn {
-  background: #1A1A1A;
-  border: 1px solid #333;
-  border-radius: 8px;
-  height: 44px;
-  flex: 1;
-  min-width: 44px;
-  color: #666;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 2px solid var(--stroke);
+  background: var(--surface0);
+  color: var(--txtDim);
+  font-size: 20px;
+  font-weight: 800;
   cursor: pointer;
+  transition: all 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
 }
 
 .penBtn:hover {
-  border-color: #666;
-  background: #222;
+  border-color: var(--stroke2);
+  background: var(--surface1);
 }
 
 .penBtn.is-goal {
-  background: #E0E0E0;
-  color: #111;
-  border-color: #FFF;
+  background: var(--colorGoal);
+  border-color: var(--colorGoal);
+  color: white;
 }
 
 .penBtn.is-miss {
-  background: #3A1010;
-  color: #FF5555;
-  border-color: #9E2A2A;
+  background: var(--colorRed);
+  border-color: var(--colorRed);
+  color: white;
 }
 
-/* Roster */
+/* ============================================
+   ROSTER / ESCALACAO
+   ============================================ */
 .rosterBody {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding: 16px;
 }
 
 .rosterGrid {
@@ -650,46 +869,82 @@ select:focus, input:focus {
 .rosterLabel {
   font-size: 11px;
   font-weight: 800;
-  color: var(--txtMuted);
+  color: var(--inter-red-light);
   text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--borderCard);
+}
+
+.rosterCoach {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.rosterCoach input {
+  flex: 1;
+  height: 32px;
+  font-size: 12px;
 }
 
 .rosterList {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .rosterItem {
-  padding: 8px 12px;
-  border: 1px solid var(--stroke);
-  border-radius: 8px;
-  background: var(--surface0);
-  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  padding: 8px 12px;
+  background: var(--surface0);
+  border: 1px solid var(--borderCard);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .rosterItem:hover {
   background: var(--surface1);
-  border-color: #555;
+  border-color: var(--inter-red);
 }
 
 .rosterItem.selected {
-  border-color: var(--accentYellow);
-  background: rgba(230, 184, 74, 0.1);
+  border-color: var(--inter-red);
+  background: rgba(227, 28, 35, 0.1);
+}
+
+.rosterItem.substituted {
+  opacity: 0.6;
+}
+
+.rosterItem.substituted .rosterName {
+  text-decoration: line-through;
+  color: var(--txtMuted);
+}
+
+.rosterItem.expelled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 .rosterNumber {
+  font-size: 12px;
   font-weight: 800;
-  color: var(--accentYellow);
+  color: var(--inter-red-light);
   min-width: 24px;
+  text-align: center;
 }
 
 .rosterName {
   flex: 1;
+  font-size: 13px;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -698,11 +953,13 @@ select:focus, input:focus {
 .rosterBadges {
   display: flex;
   gap: 4px;
+  align-items: center;
 }
 
 .badge {
-  width: 16px;
-  height: 16px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -712,37 +969,136 @@ select:focus, input:focus {
 }
 
 .badge--goal {
-  background: var(--accentGreen);
-  color: #000;
+  background: var(--colorGoal);
+  color: white;
 }
 
 .badge--yellow {
-  background: var(--accentYellow);
+  background: var(--colorYellow);
   color: #000;
 }
 
 .badge--red {
-  background: var(--accentRed);
-  color: #FFF;
+  background: var(--colorRed);
+  color: white;
 }
 
-/* Actions */
+.badge--sub {
+  background: var(--colorSub);
+  color: white;
+}
+
+.rosterInput {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.rosterInput input {
+  height: 32px;
+  font-size: 12px;
+}
+
+.rosterInput input.numInput {
+  width: 50px;
+  text-align: center;
+}
+
+.rosterInput input.nameInput {
+  flex: 1;
+}
+
+/* ============================================
+   ACTIONS
+   ============================================ */
 .actionsGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
-/* Modal */
+/* ============================================
+   HISTORY
+   ============================================ */
+.historyList {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.historyItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface0);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.historyTime {
+  font-weight: 700;
+  color: var(--inter-red-light);
+  min-width: 40px;
+}
+
+.historyIcon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.historyIcon.goal {
+  background: var(--colorGoal);
+  color: white;
+}
+
+.historyIcon.yellow {
+  background: var(--colorYellow);
+  color: #000;
+}
+
+.historyIcon.red {
+  background: var(--colorRed);
+  color: white;
+}
+
+.historyIcon.sub {
+  background: var(--colorSub);
+  color: white;
+}
+
+.historyText {
+  flex: 1;
+  color: var(--txt);
+}
+
+.historyTeam {
+  font-weight: 700;
+  color: var(--txtMuted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+/* ============================================
+   MODALS
+   ============================================ */
 .modalMask {
   position: fixed;
   inset: 0;
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.85);
   z-index: 9999;
-  padding: 12px;
+  padding: 16px;
+  backdrop-filter: blur(4px);
 }
 
 .modalMask[aria-hidden="false"] {
@@ -750,50 +1106,86 @@ select:focus, input:focus {
 }
 
 .modal {
-  width: min(520px, 100%);
+  width: min(500px, 95%);
   max-height: 90vh;
   overflow: hidden;
   border-radius: var(--radius-card);
-  border: 1px solid var(--borderCard);
-  background: #151515;
+  border: 1px solid var(--inter-red-dark);
+  background: var(--bgCard);
   display: flex;
   flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
-.small-modal {
-  width: min(400px, 90%);
+.modal.small-modal {
+  width: min(400px, 95%);
 }
 
 .modalHead {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--stroke);
-  background: var(--bgCard);
+  padding: 16px;
+  background: linear-gradient(90deg, var(--inter-red-dark) 0%, var(--inter-red-darker) 100%);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .modalTitle {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   text-transform: uppercase;
-  color: #FFF;
+  letter-spacing: 0.1em;
+  color: white;
 }
 
 .modalBody {
-  padding: 16px;
-  overflow: auto;
+  padding: 20px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  background: #151515;
+  gap: 16px;
 }
 
+.modalFooter {
+  padding: 16px;
+  border-top: 1px solid var(--borderCard);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Player Modal */
 .playerModalInfo {
   text-align: center;
-  padding: 12px;
+  padding: 20px;
   background: var(--surface0);
-  border-radius: 8px;
+  border-radius: var(--radius-inner);
+  border: 1px solid var(--borderCard);
+}
+
+.playerModalNumber {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--inter-red-light);
+}
+
+.playerModalName {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--txt);
+  margin-top: 4px;
+}
+
+.playerModalTeam {
+  font-size: 12px;
+  color: var(--txtMuted);
+  margin-top: 4px;
+}
+
+.playerModalStats {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
 }
 
 .playerModalActions {
@@ -802,25 +1194,126 @@ select:focus, input:focus {
   gap: 8px;
 }
 
-/* Utilities */
+.playerModalActions .btn {
+  height: 48px;
+}
+
+/* Substitution Modal */
+.subModalOut {
+  padding: 12px;
+  background: var(--colorRedBg);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.subModalOutLabel {
+  font-size: 10px;
+  color: var(--txtMuted);
+  text-transform: uppercase;
+}
+
+.subModalOutName {
+  font-size: 16px;
+  font-weight: 700;
+  color: #FF8A80;
+}
+
+.subModalIn {
+  padding: 12px;
+  background: var(--colorGoalBg);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 8px;
+}
+
+.subModalInLabel {
+  font-size: 10px;
+  color: var(--txtMuted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.subModalInputs {
+  display: flex;
+  gap: 8px;
+}
+
+.subModalInputs input {
+  height: 36px;
+}
+
+.subModalInputs .numInput {
+  width: 60px;
+  text-align: center;
+}
+
+.subModalInputs .nameInput {
+  flex: 1;
+}
+
+/* ============================================
+   UTILITIES
+   ============================================ */
 .isHidden {
   display: none !important;
 }
 
-/* Responsive */
-@media (max-width: 480px) {
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-12 { margin-bottom: 12px; }
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+
+.text-center { text-align: center; }
+.text-muted { color: var(--txtMuted); }
+.text-sm { font-size: 12px; }
+
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 600px) {
   .teamsGrid,
   .rosterGrid,
-  .playerModalActions {
+  .playerModalActions,
+  .actionsGrid {
     grid-template-columns: 1fr;
   }
 
   .scoreboardWrap {
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
   }
 
   .vsIcon {
     display: none;
+  }
+
+  .timerWrap {
+    flex-direction: column;
+  }
+
+  .timerSetBox {
+    flex-direction: row;
+  }
+
+  .periodBar {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .penShots {
+    flex-wrap: wrap;
+  }
+
+  .penBtn {
+    width: 40px;
+    height: 40px;
   }
 }
