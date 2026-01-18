@@ -1,73 +1,130 @@
 /**
  * SpiderKong Panel - Configuration
- * Based on OBSPort structure
+ * Complete configuration for OBS WebSocket integration
  */
-
+ 
 window.CONFIG = {
-  // WebSocket
+  // ===========================================
+  // WebSocket Connection
+  // ===========================================
   wsUrl: "ws://127.0.0.1:4455",
   password: "",
-
+ 
+  // ===========================================
+  // Reconnection Settings
+  // ===========================================
+  reconnect: {
+    enabled: true,
+    delays: [1000, 2000, 5000, 10000, 30000],
+    maxAttempts: Infinity
+  },
+ 
+  // ===========================================
   // Default Scene
+  // ===========================================
   defaultScene: "Match Center",
-
-  // Available Skins
+ 
+  // ===========================================
+  // Skins Configuration
+  // ===========================================
   skins: ["generico", "champions", "libertadores", "brasileiraocopa"],
   defaultSkin: "generico",
-
-  // Slot Configuration
-  slotPrefix: "Slot_",
-  slotCount: 11,
-
-  // Source Naming Pattern (use <skin> as placeholder)
+ 
+  // Font mapping per skin
+  skinFonts: {
+    generico: "Nunito",
+    champions: "CHAMPIONS",
+    libertadores: "BRANDING",
+    brasileiraocopa: "Nunito"
+  },
+ 
+  // ===========================================
+  // OBS Source Naming Patterns
+  // Use <skin> as placeholder for skin name
+  // ===========================================
   sourcePatterns: {
     // Scoreboard
-    scoreHome: "<skin>_score_home",
-    scoreAway: "<skin>_score_away",
-    teamNameHome: "<skin>_team_home",
-    teamNameAway: "<skin>_team_away",
-    teamSiglaHome: "<skin>_sigla_home",
-    teamSiglaAway: "<skin>_sigla_away",
-    teamLogoHome: "<skin>_logo_home",
-    teamLogoAway: "<skin>_logo_away",
-    coachHome: "<skin>_coach_home",
-    coachAway: "<skin>_coach_away",
-
+    scoreHome: "<skin>_placar_casa",
+    scoreAway: "<skin>_placar_fora",
+    teamNameHome: "<skin>_nome_casa",
+    teamNameAway: "<skin>_nome_fora",
+    teamSiglaHome: "<skin>_sigla_casa",
+    teamSiglaAway: "<skin>_sigla_fora",
+    teamLogoHome: "<skin>_escudo_casa",
+    teamLogoAway: "<skin>_escudo_fora",
+    coachHome: "<skin>_tecnico_casa",
+    coachAway: "<skin>_tecnico_fora",
+ 
     // Timer
-    timer: "<skin>_timer",
-    period: "<skin>_period",
-
+    timer: "<skin>_cronometro",
+    period: "<skin>_periodo",
+ 
     // Aggregate
-    aggHome: "<skin>_agg_home",
-    aggAway: "<skin>_agg_away",
-
-    // Penalties
-    penaltyPrefix: "<skin>_pen_",
-
-    // Player slots
-    playerName: "<skin>_player_name_",
-    playerNumber: "<skin>_player_num_",
-    playerGoals: "<skin>_player_goals_",
-    playerCard: "<skin>_player_card_",
-    playerSub: "<skin>_player_sub_"
+    aggHome: "<skin>_agregado_casa",
+    aggAway: "<skin>_agregado_fora",
+    aggTotalHome: "<skin>_agregado_total_casa",
+    aggTotalAway: "<skin>_agregado_total_fora",
+ 
+    // Penalties Score
+    penScoreHome: "<skin>_penaltis_casa",
+    penScoreAway: "<skin>_penaltis_fora",
+ 
+    // Penalty markers (1-5)
+    penMarkerHome: "<skin>_pen_casa_",
+    penMarkerAway: "<skin>_pen_fora_",
+ 
+    // Player slots (1-11)
+    playerName: "<skin>_jogador_nome_",
+    playerNumber: "<skin>_jogador_num_",
+    playerGoal: "<skin>_jogador_gol_",
+    playerGoalCount: "<skin>_jogador_gols_",
+    playerCard: "<skin>_jogador_cartao_",
+    playerSub: "<skin>_jogador_sub_"
   },
-
-  // Groups in OBS
+ 
+  // ===========================================
+  // OBS Groups Configuration
+  // ===========================================
   groups: {
     scoreboard: "Placar",
     timer: "Cronometro",
     penalties: "Penaltis",
-    roster: "Escalacao"
+    roster: "Escalacao",
+    cards: "Cartoes"
   },
-
-  // Card Assets
-  cardAssets: {
-    yellow: "Assets/Cartoes/amarelo.png",
-    red: "Assets/Cartoes/vermelho.png",
-    yellowRed: "Assets/Cartoes/amarelo_vermelho.png"
+ 
+  // ===========================================
+  // Asset Paths
+  // ===========================================
+  assets: {
+    // Card icons
+    cardYellow: "Assets/Cartoes/amarelo.png",
+    cardRed: "Assets/Cartoes/vermelho.png",
+    cardYellowRed: "Assets/Cartoes/amarelo_vermelho.png",
+ 
+    // Goal icons
+    goalSingle: "Assets/Cartoes/ball.png",
+    goalMultiple: "Assets/Cartoes/ball.png",
+ 
+    // Substitution icon
+    subIcon: "Assets/Cartoes/swap.png",
+ 
+    // Penalty markers
+    penGoal: "Assets/Penaltis/gol.png",
+    penMiss: "Assets/Penaltis/fora.png",
+    penEmpty: "Assets/Penaltis/vazio.png",
+ 
+    // Teams folder
+    teamsFolder: "Assets/Times/",
+ 
+    // Players folder
+    playersFolder: "Assets/Players/",
+    reservesFolder: "Assets/Reservas/"
   },
-
-  // Match Center specific
+ 
+  // ===========================================
+  // Match Center Specific
+  // ===========================================
   mc: {
     groupSlots: "02. MC Cards jogadores",
     groupCards: "01. MC Cartoes",
@@ -77,31 +134,48 @@ window.CONFIG = {
     reservePrefix: "MC_Res_",
     reserveCount: 12,
     swapSuffix: "__swap",
-    swapDelayMs: 160,
-    ballFile: "Assets/Cartoes/ball.png",
-    ballFileRes: "Assets/Cartoes/ball_res.png",
-    cardYellowFile: "Assets/Cartoes/amarelo.png",
-    cardRedFile: "Assets/Cartoes/vermelho.png",
-    reserveCardYellowFile: "Assets/Cartoes/amarelo_res.png",
-    reserveCardRedFile: "Assets/Cartoes/vermelho_res.png"
+    swapDelayMs: 160
   },
-
-  // Timer limits
+ 
+  // ===========================================
+  // Timer Configuration
+  // ===========================================
   timer: {
     maxMinutes: 199,
-    maxSeconds: 59
+    maxSeconds: 59,
+    syncIntervalMs: 1000
   },
-
-  // Storage key
-  storageKey: "spiderkong_state",
-
-  // Auto-save debounce (ms)
-  autoSaveDebounce: 500,
-
-  // Reconnect settings
-  reconnect: {
-    enabled: true,
-    delays: [1000, 2000, 5000, 10000, 30000],
-    maxAttempts: 10
+ 
+  // ===========================================
+  // Penalties Configuration
+  // ===========================================
+  penalties: {
+    shotsPerTeam: 5,
+    states: ["empty", "goal", "miss"]
+  },
+ 
+  // ===========================================
+  // History Configuration
+  // ===========================================
+  history: {
+    maxEvents: 50
+  },
+ 
+  // ===========================================
+  // Storage Configuration
+  // ===========================================
+  storage: {
+    key: "spiderkong_state",
+    version: "2.0.0",
+    autoSaveDebounceMs: 500,
+    maxSizeBytes: 500000
+  },
+ 
+  // ===========================================
+  // UI Configuration
+  // ===========================================
+  ui: {
+    rosterSlots: 11,
+    defaultPlayerNumber: "00"
   }
 };
