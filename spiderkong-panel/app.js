@@ -34,16 +34,20 @@ const obsClient = new ObsWsClient({
     logger.log(level, message, meta);
   }
 });
-const skinManager = new SkinManager();
 const syncEngine = new SyncEngine(obsClient, logger, () => state);
+const skinManager = new SkinManager({ obsClient, logger, syncEngine });
 
 let lowPowerEnabled = false;
 let substitutionContext = null;
+let sceneLocked = false;
+let skinLocked = false;
+let lastObsState = null;
 
 const matchTimer = new MatchTimer({
   onTick: (formatted, rawMs) => {
     state.timer.elapsedMs = rawMs;
     renderAll(state);
+    syncEngine.syncTimer(state);
   },
   onRunningChange: (running) => {
     state.timer.running = running;
@@ -98,6 +102,10 @@ function handleObsState(stateName) {
   const config = WS_STATUS[stateName] || WS_STATUS.DISCONNECTED;
   setWsStatusPill(config);
   updateSyncButtonLabel(stateName);
+  if (stateName === 'IDENTIFIED' && lastObsState !== 'IDENTIFIED') {
+    void refreshObsDiscovery();
+  }
+  lastObsState = stateName;
 }
 
 function updateSyncButtonLabel(stateName) {
@@ -125,6 +133,101 @@ function fillSelect(select, options) {
     node.textContent = option.label;
     select.appendChild(node);
   });
+}
+
+function getSkinLabel(skin) {
+  switch (skin) {
+    case 'champions':
+      return 'Champions';
+    case 'libertadores':
+      return 'Libertadores';
+    case 'brasileiraocopa':
+      return 'Brasileirão Copa';
+    case 'generico':
+      return 'Genérico';
+    default:
+      return skin;
+  }
+}
+
+function buildOptions(values, getLabel) {
+  return values.map((value) => ({
+    value,
+    label: getLabel(value)
+  }));
+}
+
+function pickSceneName(scenes, currentProgramSceneName) {
+  if (!scenes.length) {
+    return '';
+  }
+  const matchCenter = scenes.find((scene) => scene === 'Match Center');
+  if (!sceneLocked && matchCenter) {
+    return matchCenter;
+  }
+  if (state.meta.sceneName && scenes.includes(state.meta.sceneName)) {
+    return state.meta.sceneName;
+  }
+  if (matchCenter) {
+    return matchCenter;
+  }
+  if (currentProgramSceneName && scenes.includes(currentProgramSceneName)) {
+    return currentProgramSceneName;
+  }
+  return scenes[0];
+}
+
+function pickSkinName(skins) {
+  if (!skins.length) {
+    return '';
+  }
+  if (skinLocked && skins.includes(state.meta.skin)) {
+    return state.meta.skin;
+  }
+  if (state.meta.skin && skins.includes(state.meta.skin)) {
+    return state.meta.skin;
+  }
+  return skins[0];
+}
+
+async function refreshSkinOptions(sceneName) {
+  const dom = cacheDom();
+  const discoveredSkins = await skinManager.discoverSkins(sceneName);
+  const skins = discoveredSkins.length ? discoveredSkins : skinManager.getKnownSkins();
+  const selectedSkin = pickSkinName(skins);
+  if (selectedSkin) {
+    state.meta.skin = selectedSkin;
+  }
+  fillSelect(dom.skinSelect, buildOptions(skins, getSkinLabel));
+  if (dom.skinSelect && selectedSkin) {
+    dom.skinSelect.value = selectedSkin;
+  }
+  persistState();
+  renderAll(state);
+}
+
+async function refreshObsDiscovery() {
+  if (!syncEngine.isIdentified()) {
+    return;
+  }
+  const dom = cacheDom();
+  const previousScene = state.meta.sceneName;
+  const { scenes, currentProgramSceneName } = await skinManager.discoverScenes();
+  if (!scenes.length) {
+    return;
+  }
+  const selectedScene = pickSceneName(scenes, currentProgramSceneName);
+  if (selectedScene) {
+    state.meta.sceneName = selectedScene;
+  }
+  fillSelect(dom.sceneSelect, buildOptions(scenes, (scene) => scene));
+  if (dom.sceneSelect && selectedScene) {
+    dom.sceneSelect.value = selectedScene;
+  }
+  await refreshSkinOptions(selectedScene);
+  if (previousScene !== selectedScene) {
+    syncEngine.syncAll(state);
+  }
 }
 
 async function copyLogs() {
@@ -160,6 +263,43 @@ function setObsPassword(password) {
 function clearObsPassword() {
   localStorage.removeItem(STORAGE_KEY);
   obsClient.setPassword('');
+}
+
+async function handleSceneChange(event) {
+  const sceneName = event?.target?.value?.trim();
+  if (!sceneName) {
+    return;
+  }
+  sceneLocked = true;
+  state.meta.sceneName = sceneName;
+  persistState();
+  renderAll(state);
+  skinLocked = false;
+  await refreshSkinOptions(sceneName);
+  if (syncEngine.isIdentified()) {
+    setBusy(true);
+    await syncEngine.syncAll(state);
+    setBusy(false);
+  }
+}
+
+async function handleSkinChange(event) {
+  const newSkin = event?.target?.value?.trim();
+  if (!newSkin || newSkin === state.meta.skin) {
+    return;
+  }
+  skinLocked = true;
+  setBusy(true);
+  const ok = await skinManager.changeSkin(newSkin, state);
+  if (!ok) {
+    const dom = cacheDom();
+    if (dom.skinSelect) {
+      dom.skinSelect.value = state.meta.skin;
+    }
+  }
+  persistState();
+  renderAll(state);
+  setBusy(false);
 }
 
 function clampScore(value) {
@@ -343,6 +483,7 @@ function updateTeamFromInputs(team) {
     state.teams.away.coach = dom.awayCoach?.value.trim() || '';
   }
   renderAll(state);
+  syncEngine.syncTeams(state);
   persistState();
 }
 
@@ -382,6 +523,7 @@ function confirmTimerModal() {
   state.timer.running = matchTimer.running;
   state.timer.startedAtEpochMs = matchTimer.startedAtEpochMs;
   renderAll(state);
+  syncEngine.syncTimer(state);
   persistState();
   closeTimerModal();
 }
@@ -393,6 +535,8 @@ function selectPeriod(period) {
   state.timer.period = period;
   state.penalties.active = period === 'PEN';
   renderAll(state);
+  syncEngine.syncTimer(state);
+  syncEngine.syncPenalties(state);
   persistState();
 }
 
@@ -449,6 +593,7 @@ function saveRoster(team) {
   }
   renderAll(state);
   syncEngine.syncAllPlayers(state);
+  syncEngine.syncTeams(state);
   persistState();
 }
 
@@ -674,7 +819,8 @@ function cyclePenalty(value) {
 
 function logPenaltiesStub() {
   if (syncEngine.isIdentified()) {
-    logger.info('sync stub: penalties');
+    syncEngine.syncPenalties(state);
+    syncEngine.syncScore(state);
     return;
   }
   syncEngine.logOffline();
@@ -682,7 +828,7 @@ function logPenaltiesStub() {
 
 function logResetStub() {
   if (syncEngine.isIdentified()) {
-    logger.info('sync stub: reset');
+    syncEngine.syncAll(state);
     return;
   }
   syncEngine.logOffline();
@@ -806,13 +952,13 @@ function handlePlayerAction(dataset) {
 
 function initUi() {
   const dom = cacheDom();
-  fillSelect(dom.sceneSelect, [{ value: 'match-center', label: 'Match Center' }]);
-  fillSelect(dom.skinSelect, [
-    { value: 'champions', label: 'Champions' },
-    { value: 'libertadores', label: 'Libertadores' },
-    { value: 'brasileiraocopa', label: 'Brasileirão Copa' },
-    { value: 'generico', label: 'Genérico' }
-  ]);
+  const sceneFallback = state.meta.sceneName || 'Match Center';
+  fillSelect(dom.sceneSelect, [{ value: sceneFallback, label: sceneFallback }]);
+  const skins = skinManager.getKnownSkins();
+  fillSelect(dom.skinSelect, buildOptions(skins, getSkinLabel));
+  if (dom.skinSelect && state.meta.skin) {
+    dom.skinSelect.value = state.meta.skin;
+  }
   fillSelect(dom.homeTeamSelect, [
     { value: '', label: 'Selecione' },
     { value: 'home-1', label: 'Time A' },
@@ -885,18 +1031,21 @@ function bindEvents() {
       matchTimer.start();
       state.timer.running = matchTimer.running;
       state.timer.startedAtEpochMs = matchTimer.startedAtEpochMs;
+      syncEngine.syncTimer(state);
       persistState();
     },
     onTimerPause: () => {
       matchTimer.pause();
       state.timer.running = matchTimer.running;
       state.timer.elapsedMs = matchTimer.elapsedMs;
+      syncEngine.syncTimer(state);
       persistState();
     },
     onTimerReset: () => {
       matchTimer.reset();
       state.timer.running = matchTimer.running;
       state.timer.elapsedMs = matchTimer.elapsedMs;
+      syncEngine.syncTimer(state);
       persistState();
     },
     onTimerSet: () => openTimerModal(),
@@ -919,14 +1068,22 @@ function bindEvents() {
     onResetTotal: () => onResetTotal(),
     onSubCancel: () => closeSubModal(),
     onSubConfirm: () => onPlayerSubConfirm(),
-    onPlayerAction: (dataset) => handlePlayerAction(dataset)
+    onPlayerAction: (dataset) => handlePlayerAction(dataset),
+    onSceneChange: (event) => handleSceneChange(event),
+    onSkinChange: (event) => handleSkinChange(event)
   });
 
   bindActions({
-    onSyncObs: () => {
-      setBusy(true);
+    onSyncObs: async () => {
+      if (syncEngine.isIdentified()) {
+        logger.info('sync all requested');
+        setBusy(true);
+        await syncEngine.syncAll(state);
+        setBusy(false);
+        return;
+      }
+      logger.info('connect requested');
       connectNow();
-      setTimeout(() => setBusy(false), 600);
     },
     onLogCopy: copyLogs,
     onLogClear: () => logger.clear(),

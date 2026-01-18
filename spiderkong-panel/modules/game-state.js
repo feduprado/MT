@@ -37,7 +37,7 @@ export function createInitialGameState() {
   return {
     version: '0.5.0',
     meta: {
-      skin: '',
+      skin: 'generico',
       sceneName: 'Match Center'
     },
     teams: {
