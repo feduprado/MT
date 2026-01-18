@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SpiderKong Panel</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+
+  <link rel="stylesheet" href="./dock.css" />
+</head>
+
+<body>
+  <div class="appShell">
+    <header class="headerRow">
+      <div class="brand">
+        <span class="logoType">SPIDERKONG</span>
+      </div>
+
+      <div class="sceneSelectWrap">
+        <select id="sceneSelect" aria-label="Cena atual" title="Mudar Cena"></select>
+      </div>
+
+      <div class="skinSelectWrap">
+        <select id="skinSelect" aria-label="Skin" title="Mudar Skin"></select>
+      </div>
+
+      <div class="statusGroup">
+        <span id="pillWs" class="pill pill--off" title="Status da Conexao">WS</span>
+      </div>
+    </header>
+
+    <main class="mainContent">
+      <div id="mainPanelsWrap" data-panel="main-wrap">
+
+        <!-- Times Section -->
+        <section class="card">
+          <div class="cardHeader">
+            <div class="cardTitle">Times</div>
+          </div>
+
+          <div class="teamsGrid">
+            <div class="teamBlock">
+              <div class="teamLabel">CASA</div>
+              <select id="homeTeamSelect" class="teamSelect"></select>
+              <input id="homeTeamName" type="text" placeholder="Nome do time" />
+              <input id="homeTeamSigla" type="text" placeholder="Sigla" maxlength="4" />
+              <input id="homeCoach" type="text" placeholder="Tecnico" />
+              <button id="btnApplyHome" class="btn btn--primary">Aplicar</button>
+            </div>
+
+            <div class="teamBlock">
+              <div class="teamLabel">VISITANTE</div>
+              <select id="awayTeamSelect" class="teamSelect"></select>
+              <input id="awayTeamName" type="text" placeholder="Nome do time" />
+              <input id="awayTeamSigla" type="text" placeholder="Sigla" maxlength="4" />
+              <input id="awayCoach" type="text" placeholder="Tecnico" />
+              <button id="btnApplyAway" class="btn btn--primary">Aplicar</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Placar Section -->
+        <section class="card">
+          <div class="cardHeader">
+            <div class="cardTitle">Placar</div>
+          </div>
+
+          <div class="scoreboardWrap">
+            <div class="scoreGroup">
+              <button id="btnScoreHomeMinus" class="btn btn--round">-</button>
+              <span id="scoreHome" class="scoreDisplay">0</span>
+              <button id="btnScoreHomePlus" class="btn btn--round">+</button>
+            </div>
+
+            <span class="vsIcon">X</span>
+
+            <div class="scoreGroup">
+              <button id="btnScoreAwayMinus" class="btn btn--round">-</button>
+              <span id="scoreAway" class="scoreDisplay">0</span>
+              <button id="btnScoreAwayPlus" class="btn btn--round">+</button>
+            </div>
+          </div>
+
+          <div class="scoreActions">
+            <button id="btnScoreReset" class="btn">Zerar Placar</button>
+          </div>
+
+          <!-- Agregado -->
+          <div class="aggWrap">
+            <button id="btnToggleAgg" class="btn btn--toggle">
+              <span class="material-symbols-outlined">calculate</span>
+              AGREGADO: OFF
+            </button>
+            <div id="aggControls" class="aggControls isHidden">
+              <div class="aggSide">
+                <button id="btnAggHomeMinus" class="btn btn--mini">-</button>
+                <div class="aggDisplay">
+                  <span class="aggLabel">IDA</span>
+                  <span id="aggHome">0</span>
+                </div>
+                <button id="btnAggHomePlus" class="btn btn--mini">+</button>
+              </div>
+              <div class="aggTotal">
+                <span class="aggLabel">TOTAL</span>
+                <span id="aggTotalDisplay">(0) - (0)</span>
+              </div>
+              <div class="aggSide">
+                <button id="btnAggAwayMinus" class="btn btn--mini">-</button>
+                <div class="aggDisplay">
+                  <span class="aggLabel">IDA</span>
+                  <span id="aggAway">0</span>
+                </div>
+                <button id="btnAggAwayPlus" class="btn btn--mini">+</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Timer Section -->
+        <section class="card">
+          <div class="cardHeader">
+            <div class="cardTitle">Cronometro</div>
+          </div>
+
+          <div class="timerWrap">
+            <div class="timerDisplayBox">
+              <span id="timerDisplay">00:00</span>
+            </div>
+
+            <div class="timerSetBox">
+              <input id="timerSetInput" type="text" placeholder="mm:ss" />
+              <button id="btnTimerSet" class="btn">SET</button>
+            </div>
+          </div>
+
+          <div class="timerActions">
+            <button id="btnTimerStart" class="btn btn--primary">
+              <span class="material-symbols-outlined">play_arrow</span>
+            </button>
+            <button id="btnTimerPause" class="btn">Pause</button>
+            <button id="btnTimerResume" class="btn">Resume</button>
+            <button id="btnTimerReset" class="btn">
+              <span class="material-symbols-outlined">refresh</span>
+            </button>
+          </div>
+
+          <div class="statusBar">
+            <button id="btnStatus1T" class="btn btn--status active">1T</button>
+            <button id="btnStatus2T" class="btn btn--status">2T</button>
+            <button id="btnStatusInt" class="btn btn--status">INT</button>
+            <button id="btnStatusPro" class="btn btn--status">PRO</button>
+            <button id="btnStatusPen" class="btn btn--status">PEN</button>
+          </div>
+        </section>
+
+        <!-- Penalidades Section -->
+        <section id="penaltiesPanel" class="card isHidden">
+          <div class="cardHeader">
+            <div class="cardTitle">Penaltis</div>
+            <div class="penActions">
+              <button id="btnPenaltyAdd" class="btn btn--round-small">+</button>
+              <button id="btnPenaltyReset" class="btn btn--danger">Reset</button>
+            </div>
+          </div>
+
+          <div class="penaltiesGrid">
+            <div class="penaltiesTeam">
+              <span id="penTagHome" class="penTag">CASA</span>
+              <div id="penListHome" class="penShots"></div>
+            </div>
+            <div class="penaltiesTeam">
+              <span id="penTagAway" class="penTag">FORA</span>
+              <div id="penListAway" class="penShots"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Escalacao Section -->
+        <section class="card">
+          <div class="cardHeader">
+            <div class="cardTitle">Escalacao</div>
+            <button id="btnToggleRoster" class="btn btn--icon">
+              <span class="material-symbols-outlined">expand_more</span>
+            </button>
+          </div>
+
+          <div id="rosterBody" class="rosterBody isHidden">
+            <div class="rosterGrid">
+              <div class="rosterTeam">
+                <div class="rosterLabel">CASA</div>
+                <div id="rosterHomeList" class="rosterList"></div>
+              </div>
+              <div class="rosterTeam">
+                <div class="rosterLabel">VISITANTE</div>
+                <div id="rosterAwayList" class="rosterList"></div>
+              </div>
+            </div>
+            <button id="btnApplyRoster" class="btn btn--primary full-width">Aplicar Escalacao</button>
+          </div>
+        </section>
+
+        <!-- Acoes Section -->
+        <section class="card">
+          <div class="cardHeader">
+            <div class="cardTitle">Acoes</div>
+          </div>
+
+          <div class="actionsGrid">
+            <button id="btnSyncObs" class="btn btn--primary">
+              <span class="material-symbols-outlined">sync</span>
+              SYNC OBS
+            </button>
+            <button id="btnReconnect" class="btn">
+              <span class="material-symbols-outlined">refresh</span>
+              Reconectar
+            </button>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Player Action Modal -->
+  <div id="playerModal" class="modalMask" aria-hidden="true">
+    <div class="modal small-modal">
+      <div class="modalHead">
+        <div class="modalTitle">Acoes do Jogador</div>
+        <button id="btnPlayerModalClose" class="btn">Fechar</button>
+      </div>
+      <div class="modalBody">
+        <div id="playerModalInfo" class="playerModalInfo"></div>
+        <div class="playerModalActions">
+          <button id="btnPlayerGoal" class="btn btn--goal">
+            <span class="material-symbols-outlined">sports_soccer</span> Gol
+          </button>
+          <button id="btnPlayerYellow" class="btn btn--yellow">
+            <span class="material-symbols-outlined">warning</span> Amarelo
+          </button>
+          <button id="btnPlayerRed" class="btn btn--red">
+            <span class="material-symbols-outlined">report</span> Vermelho
+          </button>
+          <button id="btnPlayerSub" class="btn">
+            <span class="material-symbols-outlined">swap_horiz</span> Substituir
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Substitution Modal -->
+  <div id="subModal" class="modalMask" aria-hidden="true">
+    <div class="modal">
+      <div class="modalHead">
+        <div class="modalTitle">Substituicao</div>
+        <button id="btnSubModalClose" class="btn">Fechar</button>
+      </div>
+      <div class="modalBody">
+        <input id="subSearch" type="text" placeholder="Buscar jogador..." />
+        <div id="subList" class="rosterList"></div>
+        <button id="btnSubConfirm" class="btn btn--primary full-width" disabled>Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    function load(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(src);
+        document.head.appendChild(s);
+      });
+    }
+
+    (async () => {
+      try {
+        const v = Date.now();
+        await load(`./config.js?v=${v}`);
+        await load(`./roster.data.js?v=${v}`);
+        await load(`./teams.data.js?v=${v}`);
+        await load(`./app.js?v=${v}`);
+      } catch (e) {
+        document.body.innerHTML =
+          "<pre style='color:white;background:black;padding:12px'>" +
+          "ERRO AO CARREGAR SCRIPT: " + e +
+          "</pre>";
+      }
+    })();
+  })();
+  </script>
+</body>
+</html>
