@@ -118,12 +118,31 @@ body {
   align-items: flex-start;
 }
 
+.team-card.away .team-row {
+  flex-direction: row-reverse;
+}
+
+.team-card.away .team-fields {
+  text-align: right;
+}
+
+.team-card.away .team-fields label,
+.team-card.away .team-fields input,
+.team-card.away .team-fields select {
+  text-align: right;
+}
+
+.team-card.away .team-fields button {
+  align-self: flex-end;
+}
+
 .team-logo {
   width: 80px;
   height: 80px;
   background: var(--secondary);
   border-radius: 10px;
   border: 1px dashed var(--border);
+  object-fit: cover;
 }
 
 .team-fields {
@@ -131,6 +150,16 @@ body {
   grid-template-columns: 1fr;
   gap: 10px;
   flex: 1;
+}
+
+.roster-body {
+  max-height: 1200px;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+}
+
+.roster-body.is-collapsed {
+  max-height: 0;
 }
 
 .roster-card {
@@ -161,6 +190,7 @@ body {
   font-size: 36px;
   font-weight: 700;
   margin-bottom: 20px;
+  font-family: "JetBrains Mono", "Inter", system-ui, sans-serif;
 }
 
 .score-number {
@@ -184,6 +214,7 @@ body {
   font-weight: 700;
   text-align: center;
   margin-bottom: 16px;
+  font-family: "JetBrains Mono", "Inter", system-ui, sans-serif;
 }
 
 .button-row {
@@ -243,6 +274,20 @@ body {
   border-color: #b94242;
 }
 
+.btn-icon {
+  padding: 8px;
+}
+
+.btn-icon img {
+  width: 16px;
+  height: 16px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -296,14 +341,22 @@ body {
   filter: brightness(0) saturate(100%);
 }
 
-.btn-icon {
-  width: 16px;
-  height: 16px;
-}
-
-.btn.is-active {
+.btn.is-active,
+.period-btn.active {
   border-color: var(--primary);
   color: var(--primary);
+}
+
+.roster-open img {
+  transform: rotate(180deg);
+}
+
+#sectionPenalties {
+  display: none;
+}
+
+#sectionPenalties.is-visible {
+  display: block;
 }
 
 .hidden {

@@ -27,7 +27,7 @@
               <span id="wsStatusText"></span>
             </span>
           </div>
-          <button id="btnSyncObs" class="btn btn-primary">Tentar Conectar</button>
+          <button id="btnSyncObs" class="btn btn-primary">SYNC OBS</button>
         </div>
       </header>
 
@@ -47,10 +47,11 @@
                 <input id="homeTeamSigla" class="input" type="text" />
                 <label for="homeCoach">Técnico</label>
                 <input id="homeCoach" class="input" type="text" />
+                <button id="btnApplyHomeTeam" class="btn btn-secondary">Aplicar</button>
               </div>
             </div>
           </div>
-          <div id="teamAwayCard" class="card team-card">
+          <div id="teamAwayCard" class="card team-card away">
             <h3 class="card-title">Visitante</h3>
             <div class="team-row">
               <img id="awayLogoPreview" class="team-logo" alt="Escudo visitante" />
@@ -63,6 +64,7 @@
                 <input id="awayTeamSigla" class="input" type="text" />
                 <label for="awayCoach">Técnico</label>
                 <input id="awayCoach" class="input" type="text" />
+                <button id="btnApplyAwayTeam" class="btn btn-secondary">Aplicar</button>
               </div>
             </div>
           </div>
@@ -72,9 +74,17 @@
       <section id="sectionRoster" class="section">
         <div class="section-header">
           <h2 class="section-title">Cadastro de Escalações</h2>
-          <button id="rosterToggle" class="btn btn-ghost">Alternar</button>
+          <button
+            id="rosterToggle"
+            class="btn btn-ghost btn-icon"
+            title="Alternar escalações"
+            aria-label="Alternar escalações"
+            type="button"
+          >
+            <img src="./assets/icons/expand_more.svg" alt="" aria-hidden="true" />
+          </button>
         </div>
-        <div id="rosterBody" class="grid-two">
+        <div id="rosterBody" class="grid-two roster-body">
           <div id="rosterHome" class="card roster-card">
             <h3 class="card-title">Casa</h3>
             <div class="roster-coach">
@@ -160,26 +170,58 @@
           <div class="score-controls">
             <h3>Casa</h3>
             <div class="button-row">
-              <button id="btnScoreHomeMinus" class="btn btn-secondary">-</button>
-              <button id="btnScoreHomePlus" class="btn btn-primary">+</button>
+              <button
+                id="btnScoreHomeMinus"
+                class="btn btn-secondary btn-icon"
+                title="Diminuir placar casa"
+                aria-label="Diminuir placar casa"
+                type="button"
+              >
+                <img src="./assets/icons/remove.svg" alt="" aria-hidden="true" />
+              </button>
+              <button
+                id="btnScoreHomePlus"
+                class="btn btn-primary btn-icon"
+                title="Aumentar placar casa"
+                aria-label="Aumentar placar casa"
+                type="button"
+              >
+                <img src="./assets/icons/add.svg" alt="" aria-hidden="true" />
+              </button>
             </div>
           </div>
           <div class="score-controls">
             <h3>Visitante</h3>
             <div class="button-row">
-              <button id="btnScoreAwayMinus" class="btn btn-secondary">-</button>
-              <button id="btnScoreAwayPlus" class="btn btn-primary">+</button>
+              <button
+                id="btnScoreAwayMinus"
+                class="btn btn-secondary btn-icon"
+                title="Diminuir placar visitante"
+                aria-label="Diminuir placar visitante"
+                type="button"
+              >
+                <img src="./assets/icons/remove.svg" alt="" aria-hidden="true" />
+              </button>
+              <button
+                id="btnScoreAwayPlus"
+                class="btn btn-primary btn-icon"
+                title="Aumentar placar visitante"
+                aria-label="Aumentar placar visitante"
+                type="button"
+              >
+                <img src="./assets/icons/add.svg" alt="" aria-hidden="true" />
+              </button>
             </div>
           </div>
         </div>
         <div class="grid-two">
           <div class="control-group">
             <label for="aggHome">Agregado Casa</label>
-            <input id="aggHome" class="input" type="number" />
+            <input id="aggHome" class="input" type="number" min="0" max="99" inputmode="numeric" />
           </div>
           <div class="control-group">
             <label for="aggAway">Agregado Visitante</label>
-            <input id="aggAway" class="input" type="number" />
+            <input id="aggAway" class="input" type="number" min="0" max="99" inputmode="numeric" />
           </div>
         </div>
       </section>
@@ -190,17 +232,49 @@
           <span id="timerDisplay">00:00</span>
         </div>
         <div class="button-row">
-          <button id="btnTimerPlay" class="btn btn-primary">Play</button>
-          <button id="btnTimerPause" class="btn btn-secondary">Pause</button>
-          <button id="btnTimerReset" class="btn btn-secondary">Reset</button>
-          <button id="btnTimerSet" class="btn btn-ghost">Set</button>
+          <button
+            id="btnTimerPlay"
+            class="btn btn-primary btn-icon"
+            title="Iniciar cronômetro"
+            aria-label="Iniciar cronômetro"
+            type="button"
+          >
+            <img src="./assets/icons/play_arrow.svg" alt="" aria-hidden="true" />
+          </button>
+          <button
+            id="btnTimerPause"
+            class="btn btn-secondary btn-icon"
+            title="Pausar cronômetro"
+            aria-label="Pausar cronômetro"
+            type="button"
+          >
+            <img src="./assets/icons/pause.svg" alt="" aria-hidden="true" />
+          </button>
+          <button
+            id="btnTimerReset"
+            class="btn btn-secondary btn-icon"
+            title="Resetar cronômetro"
+            aria-label="Resetar cronômetro"
+            type="button"
+          >
+            <img src="./assets/icons/restart_alt.svg" alt="" aria-hidden="true" />
+          </button>
+          <button
+            id="btnTimerSet"
+            class="btn btn-ghost btn-icon"
+            title="Definir cronômetro"
+            aria-label="Definir cronômetro"
+            type="button"
+          >
+            <img src="./assets/icons/tune.svg" alt="" aria-hidden="true" />
+          </button>
         </div>
         <div id="periodButtons" class="button-row">
-          <button class="btn btn-ghost" data-period="1T">1T</button>
-          <button class="btn btn-ghost" data-period="INT">INT</button>
-          <button class="btn btn-ghost" data-period="2T">2T</button>
-          <button class="btn btn-ghost" data-period="PRO">PRO</button>
-          <button class="btn btn-ghost" data-period="PEN">PEN</button>
+          <button class="btn btn-ghost period-btn" data-period="1T">1T</button>
+          <button class="btn btn-ghost period-btn" data-period="INT">INT</button>
+          <button class="btn btn-ghost period-btn" data-period="2T">2T</button>
+          <button class="btn btn-ghost period-btn" data-period="PRO">PRO</button>
+          <button class="btn btn-ghost period-btn" data-period="PEN">PEN</button>
         </div>
       </section>
 
@@ -218,7 +292,7 @@
         </div>
       </section>
 
-      <section id="sectionPenalties" class="section hidden">
+      <section id="sectionPenalties" class="section">
         <h2 class="section-title">Pênaltis</h2>
         <div class="grid-two">
           <div id="penaltiesHome" class="card">
@@ -272,20 +346,38 @@
       </div>
     </div>
 
+    <div id="modalTimerSet" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTimerTitle">
+      <h2 id="modalTimerTitle" class="modal-title">Definir cronômetro</h2>
+      <div class="modal-grid">
+        <div>
+          <label for="timerSetMinutes">Minutos</label>
+          <input id="timerSetMinutes" class="input" type="number" min="0" max="199" inputmode="numeric" />
+        </div>
+        <div>
+          <label for="timerSetSeconds">Segundos</label>
+          <input id="timerSetSeconds" class="input" type="number" min="0" max="59" inputmode="numeric" />
+        </div>
+      </div>
+      <div class="button-row">
+        <button id="btnTimerSetCancel" class="btn btn-secondary">Cancelar</button>
+        <button id="btnTimerSetConfirm" class="btn btn-primary">Confirmar</button>
+      </div>
+    </div>
+
     <div id="loggerPanel" class="logger-panel">
       <div class="logger-header">
         <strong>Logger</strong>
         <div class="logger-actions">
-          <button id="btnLogCopy" class="btn btn-ghost">
-            <img class="btn-icon" src="./assets/icons/content_copy.svg" alt="" aria-hidden="true" />
+          <button id="btnLogCopy" class="btn btn-ghost btn-icon">
+            <img src="./assets/icons/content_copy.svg" alt="" aria-hidden="true" />
             <span>Copiar</span>
           </button>
-          <button id="btnLogClear" class="btn btn-ghost">
-            <img class="btn-icon" src="./assets/icons/delete.svg" alt="" aria-hidden="true" />
+          <button id="btnLogClear" class="btn btn-ghost btn-icon">
+            <img src="./assets/icons/delete.svg" alt="" aria-hidden="true" />
             <span>Limpar</span>
           </button>
-          <button id="btnLowPower" class="btn btn-ghost">
-            <img class="btn-icon" src="./assets/icons/energy_savings_leaf.svg" alt="" aria-hidden="true" />
+          <button id="btnLowPower" class="btn btn-ghost btn-icon">
+            <img src="./assets/icons/energy_savings_leaf.svg" alt="" aria-hidden="true" />
             <span>Low Power</span>
           </button>
         </div>

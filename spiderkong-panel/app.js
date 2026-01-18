@@ -5,17 +5,18 @@ import { MatchTimer } from './modules/timer.js';
 import { SyncEngine } from './modules/sync.js';
 import {
   bindActions,
+  bindMainActions,
   cacheDom,
   renderAll,
   renderLoggerLines,
   setBusy,
+  setControlsEnabled,
   setLowPowerState,
-  setWsStatusPill,
-  toggleSection
+  setWsStatusPill
 } from './modules/ui.js';
 import { Logger } from './modules/logger.js';
 
-const VERSION = '0.2';
+const VERSION = '0.3';
 const OBSWS_URL = 'ws://127.0.0.1:4455';
 const STORAGE_KEY = 'spiderkong-obsws-password';
 
@@ -30,10 +31,21 @@ const obsClient = new ObsWsClient({
   }
 });
 const skinManager = new SkinManager();
-const matchTimer = new MatchTimer();
 const syncEngine = new SyncEngine();
 
 let lowPowerEnabled = false;
+let offlineLogPending = false;
+
+const matchTimer = new MatchTimer({
+  onTick: (formatted, rawMs) => {
+    state.timer.elapsedMs = rawMs;
+    renderAll(state);
+  },
+  onRunningChange: (running) => {
+    state.timer.running = running;
+    state.timer.startedAtEpochMs = running ? matchTimer.startedAtEpochMs : null;
+  }
+});
 
 const WS_STATUS = {
   DISCONNECTED: {
@@ -81,6 +93,18 @@ const WS_STATUS = {
 function handleObsState(stateName) {
   const config = WS_STATUS[stateName] || WS_STATUS.DISCONNECTED;
   setWsStatusPill(config);
+  updateSyncButtonLabel(stateName);
+  if (stateName === 'IDENTIFIED') {
+    offlineLogPending = false;
+  }
+}
+
+function updateSyncButtonLabel(stateName) {
+  const dom = cacheDom();
+  if (!dom.btnSyncObs) {
+    return;
+  }
+  dom.btnSyncObs.textContent = stateName === 'IDENTIFIED' ? 'SYNC OBS' : 'TENTAR CONECTAR';
 }
 
 function registerLoggerPanel() {
@@ -99,25 +123,6 @@ function fillSelect(select, options) {
     node.value = option.value;
     node.textContent = option.label;
     select.appendChild(node);
-  });
-}
-
-function bindNotImplemented(selector) {
-  const element = document.querySelector(selector);
-  if (!element) {
-    return;
-  }
-  element.addEventListener('click', () => {
-    logger.info(`Action ${selector} not implemented.`);
-  });
-}
-
-function bindPeriodButtons() {
-  const periodButtons = document.querySelectorAll('#periodButtons [data-period]');
-  periodButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      logger.info(`Period ${button.dataset.period} not implemented.`);
-    });
   });
 }
 
@@ -156,6 +161,180 @@ function clearObsPassword() {
   obsClient.setPassword('');
 }
 
+function logSyncStub(topic) {
+  if (obsClient.state === 'IDENTIFIED') {
+    logger.info(`sync stub: ${topic}`);
+    return;
+  }
+  if (!offlineLogPending) {
+    logger.info('offline: changes pending');
+    offlineLogPending = true;
+  }
+}
+
+function clampScore(value) {
+  return Math.max(0, Math.min(99, value));
+}
+
+function parseClampNumber(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed)) {
+    return 0;
+  }
+  return clampScore(parsed);
+}
+
+function parseClampTimerMinutes(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(199, parsed));
+}
+
+function parseClampTimerSeconds(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(59, parsed));
+}
+
+function updateScore(team, delta) {
+  const current = state.score[team] ?? 0;
+  state.score[team] = clampScore(current + delta);
+  renderAll(state);
+  logSyncStub('score');
+}
+
+function updateAggregate(team, value) {
+  if (team === 'home') {
+    state.score.aggregateHome = parseClampNumber(value);
+  } else {
+    state.score.aggregateAway = parseClampNumber(value);
+  }
+  renderAll(state);
+  logSyncStub('score');
+}
+
+function updateTeamFromInputs(team) {
+  const dom = cacheDom();
+  if (team === 'home') {
+    state.teams.home.name = dom.homeTeamName?.value.trim() || '';
+    state.teams.home.sigla = dom.homeTeamSigla?.value.trim() || '';
+    state.teams.home.coach = dom.homeCoach?.value.trim() || '';
+  } else {
+    state.teams.away.name = dom.awayTeamName?.value.trim() || '';
+    state.teams.away.sigla = dom.awayTeamSigla?.value.trim() || '';
+    state.teams.away.coach = dom.awayCoach?.value.trim() || '';
+  }
+  renderAll(state);
+  logSyncStub('teams');
+}
+
+function openTimerModal() {
+  const dom = cacheDom();
+  if (!dom.modalMask || !dom.modalTimerSet) {
+    return;
+  }
+  const totalSeconds = Math.floor((state.timer.elapsedMs || 0) / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (dom.timerSetMinutes) {
+    dom.timerSetMinutes.value = String(minutes);
+  }
+  if (dom.timerSetSeconds) {
+    dom.timerSetSeconds.value = String(seconds);
+  }
+  dom.modalMask.classList.remove('hidden');
+  dom.modalTimerSet.classList.remove('hidden');
+}
+
+function closeTimerModal() {
+  const dom = cacheDom();
+  if (!dom.modalMask || !dom.modalTimerSet) {
+    return;
+  }
+  dom.modalMask.classList.add('hidden');
+  dom.modalTimerSet.classList.add('hidden');
+}
+
+function confirmTimerModal() {
+  const dom = cacheDom();
+  const minutes = parseClampTimerMinutes(dom.timerSetMinutes?.value || '0');
+  const seconds = parseClampTimerSeconds(dom.timerSetSeconds?.value || '0');
+  matchTimer.setManual(minutes, seconds);
+  state.timer.elapsedMs = matchTimer.elapsedMs;
+  state.timer.running = matchTimer.running;
+  state.timer.startedAtEpochMs = matchTimer.startedAtEpochMs;
+  renderAll(state);
+  logSyncStub('timer');
+  closeTimerModal();
+}
+
+function selectPeriod(period) {
+  if (!period) {
+    return;
+  }
+  state.timer.period = period;
+  renderAll(state);
+  logSyncStub('timer');
+}
+
+function toggleRoster() {
+  const dom = cacheDom();
+  if (!dom.rosterBody || !dom.rosterToggle) {
+    return;
+  }
+  dom.rosterBody.classList.toggle('is-collapsed');
+  dom.rosterToggle.classList.toggle('roster-open');
+}
+
+function clearRoster(team) {
+  const dom = cacheDom();
+  const coachInput = team === 'home' ? dom.rosterHomeCoach : dom.rosterAwayCoach;
+  const players = team === 'home' ? dom.rosterHomePlayers : dom.rosterAwayPlayers;
+  if (coachInput) {
+    coachInput.value = '';
+  }
+  players.forEach((input) => {
+    if (input) {
+      input.value = '';
+    }
+  });
+  if (team === 'home') {
+    state.teams.home.coach = '';
+    state.teams.home.players.forEach((player) => {
+      player.name = '';
+    });
+  } else {
+    state.teams.away.coach = '';
+    state.teams.away.players.forEach((player) => {
+      player.name = '';
+    });
+  }
+  renderAll(state);
+}
+
+function saveRoster(team) {
+  const dom = cacheDom();
+  const coachInput = team === 'home' ? dom.rosterHomeCoach : dom.rosterAwayCoach;
+  const players = team === 'home' ? dom.rosterHomePlayers : dom.rosterAwayPlayers;
+  if (team === 'home') {
+    state.teams.home.coach = coachInput?.value.trim() || '';
+    players.forEach((input, index) => {
+      state.teams.home.players[index].name = input?.value.trim() || '';
+    });
+  } else {
+    state.teams.away.coach = coachInput?.value.trim() || '';
+    players.forEach((input, index) => {
+      state.teams.away.players[index].name = input?.value.trim() || '';
+    });
+  }
+  renderAll(state);
+  logSyncStub('teams');
+}
+
 function initUi() {
   const dom = cacheDom();
   fillSelect(dom.sceneSelect, [{ value: 'match-center', label: 'Match Center' }]);
@@ -177,42 +356,51 @@ function initUi() {
   ]);
 
   setWsStatusPill(WS_STATUS.DISCONNECTED);
+  updateSyncButtonLabel('DISCONNECTED');
   setLowPowerState(lowPowerEnabled);
+  setControlsEnabled(true);
   renderAll(state);
 }
 
 function bindEvents() {
-  const selectors = [
-    '#btnHomeRosterClear',
-    '#btnHomeRosterSave',
-    '#btnAwayRosterClear',
-    '#btnAwayRosterSave',
-    '#btnScoreHomeMinus',
-    '#btnScoreHomePlus',
-    '#btnScoreAwayMinus',
-    '#btnScoreAwayPlus',
-    '#btnTimerPlay',
-    '#btnTimerPause',
-    '#btnTimerReset',
-    '#btnTimerSet',
-    '#btnPenaltiesClear',
-    '#btnHistoryClear',
-    '#btnResetScoreTimer',
-    '#btnResetAll',
-    '#btnSubCancel',
-    '#btnSubConfirm'
-  ];
-
-  selectors.forEach((selector) => bindNotImplemented(selector));
-  bindPeriodButtons();
-
-  const rosterToggle = document.getElementById('rosterToggle');
-  if (rosterToggle) {
-    rosterToggle.addEventListener('click', () => {
-      toggleSection('rosterBody');
-      logger.info('Toggle roster view.');
-    });
-  }
+  bindMainActions({
+    onApplyHomeTeam: () => updateTeamFromInputs('home'),
+    onApplyAwayTeam: () => updateTeamFromInputs('away'),
+    onScoreHomeMinus: () => updateScore('home', -1),
+    onScoreHomePlus: () => updateScore('home', 1),
+    onScoreAwayMinus: () => updateScore('away', -1),
+    onScoreAwayPlus: () => updateScore('away', 1),
+    onAggHomeChange: (event) => updateAggregate('home', event.target.value),
+    onAggAwayChange: (event) => updateAggregate('away', event.target.value),
+    onTimerPlay: () => {
+      matchTimer.start();
+      state.timer.running = matchTimer.running;
+      state.timer.startedAtEpochMs = matchTimer.startedAtEpochMs;
+      logSyncStub('timer');
+    },
+    onTimerPause: () => {
+      matchTimer.pause();
+      state.timer.running = matchTimer.running;
+      state.timer.elapsedMs = matchTimer.elapsedMs;
+      logSyncStub('timer');
+    },
+    onTimerReset: () => {
+      matchTimer.reset();
+      state.timer.running = matchTimer.running;
+      state.timer.elapsedMs = matchTimer.elapsedMs;
+      logSyncStub('timer');
+    },
+    onTimerSet: () => openTimerModal(),
+    onTimerSetCancel: () => closeTimerModal(),
+    onTimerSetConfirm: () => confirmTimerModal(),
+    onModalMaskClick: () => closeTimerModal(),
+    onPeriodSelect: (period) => selectPeriod(period),
+    onRosterToggle: () => toggleRoster(),
+    onHomeRosterClear: () => clearRoster('home'),
+    onHomeRosterSave: () => saveRoster('home'),
+    onAwayRosterClear: () => clearRoster('away'),
+    onAwayRosterSave: () => saveRoster('away')
+  });
 
   bindActions({
     onSyncObs: () => {
