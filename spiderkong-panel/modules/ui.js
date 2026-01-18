@@ -8,9 +8,16 @@ export function cacheDom() {
     sceneSelect: document.getElementById('sceneSelect'),
     skinSelect: document.getElementById('skinSelect'),
     wsStatusPill: document.getElementById('wsStatusPill'),
+    wsStatusIcon: document.getElementById('wsStatusIcon'),
+    wsStatusText: document.getElementById('wsStatusText'),
     homeTeamSelect: document.getElementById('homeTeamSelect'),
     awayTeamSelect: document.getElementById('awayTeamSelect'),
-    rosterBody: document.getElementById('rosterBody')
+    rosterBody: document.getElementById('rosterBody'),
+    btnSyncObs: document.getElementById('btnSyncObs'),
+    btnLogCopy: document.getElementById('btnLogCopy'),
+    btnLogClear: document.getElementById('btnLogClear'),
+    btnLowPower: document.getElementById('btnLowPower'),
+    loggerLines: document.getElementById('loggerLines')
   };
   return domCache;
 }
@@ -23,24 +30,63 @@ export function setBusy(isBusy) {
   document.body.classList.toggle('is-busy', Boolean(isBusy));
 }
 
-export function setWsStatusPill(status) {
+export function setWsStatusPill({ text, icon, tone }) {
   const dom = cacheDom();
   if (!dom.wsStatusPill) {
     return;
   }
-  dom.wsStatusPill.classList.remove('pill-success', 'pill-warning', 'pill-neutral');
-  if (status === 'connected') {
-    dom.wsStatusPill.textContent = 'Conectado';
-    dom.wsStatusPill.classList.add('pill-success');
+  const toneClass = tone ? `pill-${tone}` : 'pill-neutral';
+  dom.wsStatusPill.classList.remove('pill-success', 'pill-warning', 'pill-neutral', 'pill-info', 'pill-danger');
+  dom.wsStatusPill.classList.add(toneClass);
+  if (dom.wsStatusText) {
+    dom.wsStatusText.textContent = text;
+  }
+  if (dom.wsStatusIcon) {
+    dom.wsStatusIcon.src = icon;
+  }
+}
+
+export function renderLoggerLines(lines) {
+  const dom = cacheDom();
+  if (!dom.loggerLines) {
     return;
   }
-  if (status === 'connecting') {
-    dom.wsStatusPill.textContent = 'Conectando';
-    dom.wsStatusPill.classList.add('pill-warning');
+  dom.loggerLines.textContent = '';
+  lines.forEach((line) => {
+    const entry = document.createElement('div');
+    entry.textContent = line;
+    dom.loggerLines.appendChild(entry);
+  });
+  dom.loggerLines.scrollTop = dom.loggerLines.scrollHeight;
+}
+
+export function setLowPowerState(isEnabled) {
+  const dom = cacheDom();
+  if (!dom.btnLowPower) {
     return;
   }
-  dom.wsStatusPill.textContent = 'Desconectado';
-  dom.wsStatusPill.classList.add('pill-neutral');
+  dom.btnLowPower.classList.toggle('is-active', isEnabled);
+}
+
+export function bindActions({
+  onSyncObs,
+  onLogCopy,
+  onLogClear,
+  onLowPowerToggle
+} = {}) {
+  const dom = cacheDom();
+  if (dom.btnSyncObs && onSyncObs) {
+    dom.btnSyncObs.addEventListener('click', onSyncObs);
+  }
+  if (dom.btnLogCopy && onLogCopy) {
+    dom.btnLogCopy.addEventListener('click', onLogCopy);
+  }
+  if (dom.btnLogClear && onLogClear) {
+    dom.btnLogClear.addEventListener('click', onLogClear);
+  }
+  if (dom.btnLowPower && onLowPowerToggle) {
+    dom.btnLowPower.addEventListener('click', onLowPowerToggle);
+  }
 }
 
 export function toggleSection(sectionId) {
