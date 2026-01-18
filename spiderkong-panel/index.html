@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SpiderKong Control Panel</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./app.js" defer></script>
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <header id="header" class="section header">
+        <div id="logoMark" class="logo-mark">SPIDERKONG</div>
+        <div class="header-controls">
+          <div class="control-group">
+            <label for="sceneSelect">Cena</label>
+            <select id="sceneSelect" class="select"></select>
+          </div>
+          <div class="control-group">
+            <label for="skinSelect">Skin</label>
+            <select id="skinSelect" class="select"></select>
+          </div>
+          <div class="control-group">
+            <label>Status WS</label>
+            <span id="wsStatusPill" class="pill pill-neutral">Desconectado</span>
+          </div>
+          <button id="btnSyncObs" class="btn btn-primary">Sync OBS</button>
+        </div>
+      </header>
+
+      <section id="sectionTeams" class="section">
+        <h2 class="section-title">Times</h2>
+        <div class="grid-two">
+          <div id="teamHomeCard" class="card team-card">
+            <h3 class="card-title">Casa</h3>
+            <div class="team-row">
+              <img id="homeLogoPreview" class="team-logo" alt="Escudo casa" />
+              <div class="team-fields">
+                <label for="homeTeamSelect">Time</label>
+                <select id="homeTeamSelect" class="select"></select>
+                <label for="homeTeamName">Nome</label>
+                <input id="homeTeamName" class="input" type="text" />
+                <label for="homeTeamSigla">Sigla</label>
+                <input id="homeTeamSigla" class="input" type="text" />
+                <label for="homeCoach">Técnico</label>
+                <input id="homeCoach" class="input" type="text" />
+              </div>
+            </div>
+          </div>
+          <div id="teamAwayCard" class="card team-card">
+            <h3 class="card-title">Visitante</h3>
+            <div class="team-row">
+              <img id="awayLogoPreview" class="team-logo" alt="Escudo visitante" />
+              <div class="team-fields">
+                <label for="awayTeamSelect">Time</label>
+                <select id="awayTeamSelect" class="select"></select>
+                <label for="awayTeamName">Nome</label>
+                <input id="awayTeamName" class="input" type="text" />
+                <label for="awayTeamSigla">Sigla</label>
+                <input id="awayTeamSigla" class="input" type="text" />
+                <label for="awayCoach">Técnico</label>
+                <input id="awayCoach" class="input" type="text" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="sectionRoster" class="section">
+        <div class="section-header">
+          <h2 class="section-title">Cadastro de Escalações</h2>
+          <button id="rosterToggle" class="btn btn-ghost">Alternar</button>
+        </div>
+        <div id="rosterBody" class="grid-two">
+          <div id="rosterHome" class="card roster-card">
+            <h3 class="card-title">Casa</h3>
+            <div class="roster-coach">
+              <label for="rosterHomeCoach">Técnico</label>
+              <input id="rosterHomeCoach" class="input" type="text" />
+            </div>
+            <div class="roster-list">
+              <label for="homePlayer01">Jogador 01</label>
+              <input id="homePlayer01" class="input" type="text" />
+              <label for="homePlayer02">Jogador 02</label>
+              <input id="homePlayer02" class="input" type="text" />
+              <label for="homePlayer03">Jogador 03</label>
+              <input id="homePlayer03" class="input" type="text" />
+              <label for="homePlayer04">Jogador 04</label>
+              <input id="homePlayer04" class="input" type="text" />
+              <label for="homePlayer05">Jogador 05</label>
+              <input id="homePlayer05" class="input" type="text" />
+              <label for="homePlayer06">Jogador 06</label>
+              <input id="homePlayer06" class="input" type="text" />
+              <label for="homePlayer07">Jogador 07</label>
+              <input id="homePlayer07" class="input" type="text" />
+              <label for="homePlayer08">Jogador 08</label>
+              <input id="homePlayer08" class="input" type="text" />
+              <label for="homePlayer09">Jogador 09</label>
+              <input id="homePlayer09" class="input" type="text" />
+              <label for="homePlayer10">Jogador 10</label>
+              <input id="homePlayer10" class="input" type="text" />
+              <label for="homePlayer11">Jogador 11</label>
+              <input id="homePlayer11" class="input" type="text" />
+            </div>
+            <div class="roster-actions">
+              <button id="btnHomeRosterClear" class="btn btn-secondary">Limpar</button>
+              <button id="btnHomeRosterSave" class="btn btn-primary">Salvar</button>
+            </div>
+          </div>
+
+          <div id="rosterAway" class="card roster-card">
+            <h3 class="card-title">Visitante</h3>
+            <div class="roster-coach">
+              <label for="rosterAwayCoach">Técnico</label>
+              <input id="rosterAwayCoach" class="input" type="text" />
+            </div>
+            <div class="roster-list">
+              <label for="awayPlayer01">Jogador 01</label>
+              <input id="awayPlayer01" class="input" type="text" />
+              <label for="awayPlayer02">Jogador 02</label>
+              <input id="awayPlayer02" class="input" type="text" />
+              <label for="awayPlayer03">Jogador 03</label>
+              <input id="awayPlayer03" class="input" type="text" />
+              <label for="awayPlayer04">Jogador 04</label>
+              <input id="awayPlayer04" class="input" type="text" />
+              <label for="awayPlayer05">Jogador 05</label>
+              <input id="awayPlayer05" class="input" type="text" />
+              <label for="awayPlayer06">Jogador 06</label>
+              <input id="awayPlayer06" class="input" type="text" />
+              <label for="awayPlayer07">Jogador 07</label>
+              <input id="awayPlayer07" class="input" type="text" />
+              <label for="awayPlayer08">Jogador 08</label>
+              <input id="awayPlayer08" class="input" type="text" />
+              <label for="awayPlayer09">Jogador 09</label>
+              <input id="awayPlayer09" class="input" type="text" />
+              <label for="awayPlayer10">Jogador 10</label>
+              <input id="awayPlayer10" class="input" type="text" />
+              <label for="awayPlayer11">Jogador 11</label>
+              <input id="awayPlayer11" class="input" type="text" />
+            </div>
+            <div class="roster-actions">
+              <button id="btnAwayRosterClear" class="btn btn-secondary">Limpar</button>
+              <button id="btnAwayRosterSave" class="btn btn-primary">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="sectionScore" class="section">
+        <h2 class="section-title">Placar</h2>
+        <div class="score-display">
+          <span id="scoreHome" class="score-number">0</span>
+          <span class="score-divider">x</span>
+          <span id="scoreAway" class="score-number">0</span>
+        </div>
+        <div class="grid-two">
+          <div class="score-controls">
+            <h3>Casa</h3>
+            <div class="button-row">
+              <button id="btnScoreHomeMinus" class="btn btn-secondary">-</button>
+              <button id="btnScoreHomePlus" class="btn btn-primary">+</button>
+            </div>
+          </div>
+          <div class="score-controls">
+            <h3>Visitante</h3>
+            <div class="button-row">
+              <button id="btnScoreAwayMinus" class="btn btn-secondary">-</button>
+              <button id="btnScoreAwayPlus" class="btn btn-primary">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="grid-two">
+          <div class="control-group">
+            <label for="aggHome">Agregado Casa</label>
+            <input id="aggHome" class="input" type="number" />
+          </div>
+          <div class="control-group">
+            <label for="aggAway">Agregado Visitante</label>
+            <input id="aggAway" class="input" type="number" />
+          </div>
+        </div>
+      </section>
+
+      <section id="sectionTimer" class="section">
+        <h2 class="section-title">Cronômetro</h2>
+        <div class="timer-display">
+          <span id="timerDisplay">00:00</span>
+        </div>
+        <div class="button-row">
+          <button id="btnTimerPlay" class="btn btn-primary">Play</button>
+          <button id="btnTimerPause" class="btn btn-secondary">Pause</button>
+          <button id="btnTimerReset" class="btn btn-secondary">Reset</button>
+          <button id="btnTimerSet" class="btn btn-ghost">Set</button>
+        </div>
+        <div id="periodButtons" class="button-row">
+          <button class="btn btn-ghost" data-period="1T">1T</button>
+          <button class="btn btn-ghost" data-period="INT">INT</button>
+          <button class="btn btn-ghost" data-period="2T">2T</button>
+          <button class="btn btn-ghost" data-period="PRO">PRO</button>
+          <button class="btn btn-ghost" data-period="PEN">PEN</button>
+        </div>
+      </section>
+
+      <section id="sectionPlayersActions" class="section">
+        <h2 class="section-title">Ações de Jogo / Jogadores</h2>
+        <div class="grid-two">
+          <div id="homePlayersActions" class="card">
+            <h3 class="card-title">Casa</h3>
+            <div class="placeholder-list"></div>
+          </div>
+          <div id="awayPlayersActions" class="card">
+            <h3 class="card-title">Visitante</h3>
+            <div class="placeholder-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="sectionPenalties" class="section hidden">
+        <h2 class="section-title">Pênaltis</h2>
+        <div class="grid-two">
+          <div id="penaltiesHome" class="card">
+            <h3 class="card-title">Casa</h3>
+            <span id="penaltiesHomeScore" class="score-number">0</span>
+          </div>
+          <div id="penaltiesAway" class="card">
+            <h3 class="card-title">Visitante</h3>
+            <span id="penaltiesAwayScore" class="score-number">0</span>
+          </div>
+        </div>
+        <button id="btnPenaltiesClear" class="btn btn-secondary">Limpar Pênaltis</button>
+      </section>
+
+      <section id="sectionHistory" class="section">
+        <h2 class="section-title">Histórico</h2>
+        <div id="historyList" class="history-list"></div>
+        <button id="btnHistoryClear" class="btn btn-secondary">Limpar Histórico</button>
+      </section>
+
+      <section id="sectionGlobalActions" class="section">
+        <h2 class="section-title">Ações Gerais</h2>
+        <div class="button-row">
+          <button id="btnResetScoreTimer" class="btn btn-secondary">Reset Placar + Tempo</button>
+          <button id="btnResetAll" class="btn btn-danger">Reset Geral</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="modalMask" class="modal-mask hidden"></div>
+    <div id="modalSubstitution" class="modal hidden">
+      <h2 class="modal-title">Substituição</h2>
+      <div class="modal-grid">
+        <div>
+          <span class="modal-label">Sai</span>
+          <div class="modal-value">
+            <span id="subOutNumber"></span>
+            <span id="subOutName"></span>
+          </div>
+        </div>
+        <div>
+          <label for="subInNumber">Entra Número</label>
+          <input id="subInNumber" class="input" type="text" />
+          <label for="subInName">Entra Nome</label>
+          <input id="subInName" class="input" type="text" />
+        </div>
+      </div>
+      <div class="button-row">
+        <button id="btnSubCancel" class="btn btn-secondary">Cancelar</button>
+        <button id="btnSubConfirm" class="btn btn-primary">Confirmar</button>
+      </div>
+    </div>
+
+    <div id="loggerPanel" class="logger-panel">
+      <div class="logger-header">
+        <strong>Logger</strong>
+        <div class="logger-actions">
+          <button id="btnLogCopy" class="btn btn-ghost">Copiar</button>
+          <button id="btnLogClear" class="btn btn-ghost">Limpar</button>
+          <button id="btnLowPower" class="btn btn-ghost">Low Power</button>
+        </div>
+      </div>
+      <div id="loggerLines" class="logger-lines"></div>
+    </div>
+  </body>
+</html>
