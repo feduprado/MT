@@ -1434,52 +1434,298 @@
  
   async function syncPenalties() {
     if (!state.penalties.active) return;
- 
+
     const patterns = CFG.sourcePatterns || {};
- 
+
     // Sync penalty scores
     const homeScore = state.penalties.home.filter((s) => s === "goal").length;
     const awayScore = state.penalties.away.filter((s) => s === "goal").length;
- 
+
     await Promise.all([
       setInputText(getSourceName(patterns.penScoreHome), String(homeScore)),
       setInputText(getSourceName(patterns.penScoreAway), String(awayScore))
     ]);
- 
-    // Sync individual markers would go here
+
+    // Sync individual penalty markers to OBS
+    await syncPenaltyMarkers();
   }
- 
-  async function syncPlayers() {
-    // Usa nomes literais com <skin> conforme dynamicPatterns
-    for (const side of ["home", "away"]) {
-      const team = state.teams[side];
-      const prefix = side === "home" ? "esq" : "dir";
 
-      for (let i = 0; i < team.players.length && i < 11; i++) {
-        const player = team.players[i];
-        const slot = pad2(i + 1);
+  /**
+   * Sync individual penalty markers to OBS
+   * Shows goalball icon for goal, xgoal icon for miss, hidden for empty
+   */
+  async function syncPenaltyMarkers() {
+    if (!state.connected || !state.currentScene) return;
 
-        // Nome literal: {side}_jogador_{slot}_<skin>
-        const inputName = `${prefix}_jogador_${slot}_<skin>`;
-        await setInputText(inputName, player.name);
+    const sides = [
+      { key: "home", prefix: "esq" },
+      { key: "away", prefix: "dir" }
+    ];
+
+    for (const { key, prefix } of sides) {
+      const shots = state.penalties[key];
+
+      for (let i = 0; i < 5; i++) {
+        const markerNum = i + 1;
+        const status = shots[i];
+
+        // Penalty marker icons follow naming convention from config.skinVisualItems
+        // Goal icon: penalti_esq_1.png to penalti_esq_5.png
+        // Miss icon: shown by different asset file
+        const pengoalName = `${prefix}_pengoal_${markerNum}`;
+        const penmissName = `${prefix}_penmiss_${markerNum}`;
+
+        const showGoal = status === "goal";
+        const showMiss = status === "miss";
+
+        // Try to set goal marker visibility
+        try {
+          await setSceneItemEnabled(state.currentScene, pengoalName, showGoal);
+        } catch (e) {
+          // Marker may not exist with this naming
+        }
+
+        // Try to set miss marker visibility
+        try {
+          await setSceneItemEnabled(state.currentScene, penmissName, showMiss);
+        } catch (e) {
+          // Marker may not exist with this naming
+        }
       }
     }
   }
  
+  /**
+   * Format player text for OBS display
+   * Home team (esq): "00 NOMEJOGADOR" (number left of name)
+   * Away team (dir): "NOMEJOGADOR 00" (name left of number)
+   */
+  function formatPlayerText(player, side) {
+    const num = pad2(player.number);
+    const name = (player.name || "").toUpperCase();
+
+    if (side === "home") {
+      // Casa: numero a ESQUERDA do nome
+      return `${num} ${name}`;
+    } else {
+      // Visitante: nome a ESQUERDA do numero (espelhado)
+      return `${name} ${num}`;
+    }
+  }
+
+  /**
+   * Sync individual player icons to OBS
+   * Handles visibility and positioning of goal/card/swap icons
+   * 
+   * REGRA #5: Icons are positioned RELATIVE to player name
+   * When player has multiple icons (card + goal), one swaps to opposite side
+   */
+  async function syncPlayerIcons(side, playerIndex, player, prefix, slot) {
+    if (!state.connected || !state.currentScene) return;
+
+    const hasGoals = player.goals > 0;
+    const hasYellow = player.yellowCards === 1 && !player.redCard;
+    const hasRed = player.redCard || player.yellowCards >= 2;
+    const isSubstituted = player.substitutedOut;
+    const hasCard = hasYellow || hasRed;
+
+    // Determine icon positions based on multiple icons
+    // Default: icons on same side as player (esq = left icons, dir = right icons)
+    // If player has multiple icons, goal icon swaps to opposite side
+    const needsIconSwap = (hasCard || isSubstituted) && hasGoals;
+    
+    // Goal indicators
+    const goalballName = `${prefix}_goalball_${slot}_<skin>`;
+    const moregoalballName = `${prefix}_moregoalball_${slot}_<skin>`;
+    const moregoalballTextName = `${prefix}_moregoalball_text_${slot}_<skin>`;
+
+    // Show single goal icon for 1 goal
+    const showGoalball = hasGoals && player.goals === 1;
+    // Show multiple goal icon for 2+ goals
+    const showMoregoalball = hasGoals && player.goals > 1;
+
+    try {
+      await setSceneItemEnabled(state.currentScene, goalballName, showGoalball);
+      
+      // Position goal icon (swap side if needed)
+      if (showGoalball && needsIconSwap) {
+        await positionIconRelativeToText(goalballName, prefix, slot, "opposite");
+      } else if (showGoalball) {
+        await positionIconRelativeToText(goalballName, prefix, slot, "default");
+      }
+    } catch (e) {
+      // Icon may not exist
+    }
+
+    try {
+      await setSceneItemEnabled(state.currentScene, moregoalballName, showMoregoalball);
+      if (showMoregoalball) {
+        await setInputText(moregoalballTextName, String(player.goals));
+        
+        // Position multiple goals icon (swap side if needed)
+        if (needsIconSwap) {
+          await positionIconRelativeToText(moregoalballName, prefix, slot, "opposite");
+        } else {
+          await positionIconRelativeToText(moregoalballName, prefix, slot, "default");
+        }
+      }
+    } catch (e) {
+      // Icon may not exist
+    }
+
+    // Card indicator - always on default side
+    const cardName = `${prefix}_card_${slot}_<skin>`;
+    const showCard = hasCard;
+
+    try {
+      await setSceneItemEnabled(state.currentScene, cardName, showCard);
+      if (showCard) {
+        await positionIconRelativeToText(cardName, prefix, slot, "default");
+      }
+    } catch (e) {
+      // Icon may not exist
+    }
+
+    // Swap indicator - always on default side
+    const swapName = `${prefix}_swap_${slot}_<skin>`;
+
+    try {
+      await setSceneItemEnabled(state.currentScene, swapName, isSubstituted);
+      if (isSubstituted) {
+        await positionIconRelativeToText(swapName, prefix, slot, "default");
+      }
+    } catch (e) {
+      // Icon may not exist
+    }
+  }
+
+  /**
+   * Position an icon relative to the player text
+   * @param {string} iconName - Name of the icon source
+   * @param {string} prefix - esq or dir
+   * @param {string} slot - Player slot (01-11)
+   * @param {string} position - "default" or "opposite"
+   */
+  async function positionIconRelativeToText(iconName, prefix, slot, position) {
+    if (!state.connected || !state.currentScene) return;
+
+    try {
+      const textName = `${prefix}_jogador_${slot}_<skin>`;
+      
+      // Get current cached settings for the text (has font info)
+      const textSettings = state.inputSettingsCache.get(textName);
+      if (!textSettings || !textSettings.font) return;
+
+      // Get text transform (position info)
+      const { transform: textTransform } = await getSceneItemTransform(state.currentScene, textName);
+      if (!textTransform) return;
+
+      // Measure text width
+      const text = textSettings.text || "";
+      const textWidth = measureTextWidth(text, textSettings.font);
+      if (!textWidth) return;
+
+      // Get icon transform
+      const { sceneItemId: iconId, transform: iconTransform } = await getSceneItemTransform(state.currentScene, iconName);
+      if (!iconId) return;
+
+      // Calculate icon position
+      // For esq (home): text is left-aligned, icons go to the RIGHT of text
+      // For dir (away): text is right-aligned, icons go to the LEFT of text
+      const iconWidth = iconTransform.sourceWidth || 20;
+      const padding = 8; // Gap between text and icon
+
+      let newX;
+      if (prefix === "esq") {
+        // Home team - default icon position is right of text
+        if (position === "opposite") {
+          // Swap to left of text
+          newX = textTransform.positionX - iconWidth - padding;
+        } else {
+          // Default: right of text
+          newX = textTransform.positionX + textWidth + padding;
+        }
+      } else {
+        // Away team - default icon position is left of text  
+        if (position === "opposite") {
+          // Swap to right of text
+          newX = textTransform.positionX + textWidth + padding;
+        } else {
+          // Default: left of text
+          newX = textTransform.positionX - iconWidth - padding;
+        }
+      }
+
+      // Keep Y position same as icon's current Y (aligned with player row)
+      const newY = iconTransform.positionY;
+
+      // Only update if position changed significantly (avoid jitter)
+      const currentX = iconTransform.positionX || 0;
+      if (Math.abs(currentX - newX) > 2) {
+        await call("SetSceneItemTransform", {
+          sceneName: state.currentScene,
+          sceneItemId: iconId,
+          sceneItemTransform: {
+            positionX: newX,
+            positionY: newY
+          }
+        });
+      }
+    } catch (e) {
+      // Positioning failed - icon will stay at default OBS position
+    }
+  }
+
+  /**
+   * Sync all players to OBS
+   */
+  async function syncPlayers() {
+    const tasks = [];
+
+    for (const side of ["home", "away"]) {
+      const team = state.teams[side];
+      const prefix = side === "home" ? "esq" : "dir";
+
+      // Only sync first 11 players (titulares)
+      for (let i = 0; i < 11 && i < team.players.length; i++) {
+        const player = team.players[i];
+        const slot = pad2(i + 1);
+
+        // Format player text with number
+        const playerText = formatPlayerText(player, side);
+
+        // Jogador text - nome literal: {prefix}_jogador_{slot}_<skin>
+        const inputName = `${prefix}_jogador_${slot}_<skin>`;
+        tasks.push(setInputText(inputName, playerText));
+
+        // Sync player icons (goal, card, swap)
+        tasks.push(syncPlayerIcons(side, i, player, prefix, slot));
+      }
+    }
+
+    await Promise.all(tasks);
+  }
+
+  /**
+   * Sync a single player to OBS (text + icons)
+   */
   async function syncPlayer(side, playerIndex) {
     const team = state.teams[side];
     const player = team.players[playerIndex];
-    if (!player) return;
+    if (!player || playerIndex >= 11) return;
 
     const prefix = side === "home" ? "esq" : "dir";
     const slot = pad2(playerIndex + 1);
 
-    // Nome literal: {side}_jogador_{slot}_<skin>
-    const inputName = `${prefix}_jogador_${slot}_<skin>`;
-    await setInputText(inputName, player.name);
+    // Format player text with number
+    const playerText = formatPlayerText(player, side);
 
-    // TODO: Sync goal indicator, card indicator, sub indicator
-    // Usa CFG.dynamicPatterns para gerar nomes dos icones
+    // Nome literal: {prefix}_jogador_{slot}_<skin>
+    const inputName = `${prefix}_jogador_${slot}_<skin>`;
+    await setInputText(inputName, playerText);
+
+    // Sync player icons
+    await syncPlayerIcons(side, playerIndex, player, prefix, slot);
   }
  
   // ===========================================
