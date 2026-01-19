@@ -40,33 +40,31 @@ window.CONFIG = {
   },
 
   // ===========================================
-  // SKIN SWAP - Sistema de Troca de Skin Item-por-Item
+  // SKIN SWAP - Sistema de Troca de Skin por SUFIXO
   // ===========================================
   //
   // COMO FUNCIONA:
-  // 1. O sistema usa GetGroupSceneItemList para descobrir automaticamente
-  //    todos os itens dentro de cada grupo de skin no OBS
-  // 2. Cada item e controlado individualmente (SetSceneItemEnabled)
-  // 3. O grupo em si tambem e controlado para garantir visibilidade
+  // 1. O sistema usa GetSceneItemList para listar TODOS os itens da cena
+  // 2. Filtra itens que terminam com sufixo de skin:
+  //    - _champions.png
+  //    - _libertadores.png
+  //    - _brasileiraocopa.png
+  //    - _generico.png
+  // 3. Cada item é controlado INDIVIDUALMENTE (SetSceneItemEnabled)
+  //    - Itens da nova skin: VISÍVEIS
+  //    - Itens de outras skins: OCULTOS
   //
   // REQUISITOS NO OBS:
-  // - Criar um GRUPO para cada skin com o nome exato definido em skinGroups
-  // - Colocar todos os PNGs da skin DENTRO do grupo correspondente
-  // - Os nomes dos itens dentro do grupo nao precisam seguir padrao especifico
-  //   pois o sistema descobre automaticamente via GetGroupSceneItemList
+  // - Os itens (PNGs) devem ter nomes que TERMINAM com _<skin>.png
+  // - Exemplos: background_champions.png, placar_generico.png
+  // - NÃO É NECESSÁRIO criar grupos separados para cada skin
+  // - Os itens ficam diretamente na cena "Match Center"
+  //
+  // Regex usado: /_(champions|libertadores|brasileiraocopa|generico)\.png$/i
   //
   skinVisualItems: {
-    // Nomes EXATOS dos grupos de skin no OBS (case-sensitive!)
-    // O sistema vai descobrir automaticamente os itens dentro de cada grupo
-    skinGroups: {
-      generico: "Generico",
-      champions: "Champions",
-      libertadores: "Libertadores",
-      brasileiraocopa: "BrasileiraoCopa"
-    },
-    // commonItems NAO e mais usado - o sistema descobre automaticamente
-    // Mantido aqui apenas para referencia/compatibilidade
-    commonItems: []
+    // Sufixos válidos para detecção automática de skin
+    validSuffixes: ["champions", "libertadores", "brasileiraocopa", "generico"]
   },
 
   // ===========================================

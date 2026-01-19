@@ -900,15 +900,31 @@
   }
  
   // ===========================================
-  // SKIN MANAGEMENT - Sistema Robusto de Troca de Skin
+  // SKIN MANAGEMENT - Sistema de Troca por SUFIXO
+  // ===========================================
+  //
+  // Este sistema opera em itens INDIVIDUAIS baseado no SUFIXO do nome:
+  //   - _champions.png
+  //   - _libertadores.png
+  //   - _brasileiraocopa.png
+  //   - _generico.png
+  //
+  // NÃO usa grupos OBS. Opera diretamente nos itens da cena "Match Center".
   // ===========================================
 
   // Constantes de configuração para troca de skin
   const SKIN_SWAP_DEBOUNCE_MS = 300;
-  const SKIN_SWAP_ITEM_DELAY_MS = 30; // Delay entre itens para transição suave
+  const SKIN_SWAP_ITEM_DELAY_MS = 10; // Delay entre itens para transição suave
 
-  // Cache de itens descobertos por grupo
-  const groupItemsCache = new Map();
+  // Regex para detectar itens de skin pelo sufixo
+  const SKIN_SUFFIX_REGEX = /_(champions|libertadores|brasileiraocopa|generico)\.png$/i;
+
+  // Lista válida de skins (lowercase)
+  const VALID_SKINS = ["champions", "libertadores", "brasileiraocopa", "generico"];
+
+  // Cache de itens de skin descobertos na cena
+  // Map<sceneName, Array<{sceneItemId, sourceName, skin}>>
+  const skinItemsCache = new Map();
 
   /**
    * Verifica se o sistema está pronto para troca de skin
@@ -935,159 +951,103 @@
   }
 
   /**
-   * Obtém o nome do grupo no OBS para uma skin
-   * @param {string} skinKey - chave da skin
-   * @returns {string} nome do grupo
+   * Extrai o sufixo de skin do nome do source
+   * @param {string} sourceName - nome do source no OBS
+   * @returns {string|null} skin detectada (lowercase) ou null se não for item de skin
    */
-  function getSkinGroupName(skinKey) {
-    const visualItems = CFG.skinVisualItems || {};
-    const skinGroups = visualItems.skinGroups || {};
-    return skinGroups[skinKey] || skinKey.charAt(0).toUpperCase() + skinKey.slice(1);
+  function extractSkinSuffix(sourceName) {
+    const match = sourceName.match(SKIN_SUFFIX_REGEX);
+    if (match) {
+      return match[1].toLowerCase();
+    }
+    return null;
   }
 
   /**
-   * Descobre e cacheia itens dentro de um grupo no OBS
-   * @param {string} sceneName - nome da cena principal
-   * @param {string} groupName - nome do grupo
-   * @returns {Promise<Array<{sceneItemId: number, sourceName: string}>>}
+   * Descobre TODOS os itens de skin na cena (por sufixo)
+   * Usa GetSceneItemList para listar itens da cena e filtra por sufixo
+   * @param {string} sceneName - nome da cena
+   * @param {boolean} forceRefresh - se deve ignorar cache
+   * @returns {Promise<Array<{sceneItemId: number, sourceName: string, skin: string}>>}
    */
-  async function discoverGroupItems(sceneName, groupName) {
-    const cacheKey = `${sceneName}:${groupName}`;
+  async function discoverSkinItemsBySuffix(sceneName, forceRefresh = false) {
+    const cacheKey = sceneName;
 
-    if (groupItemsCache.has(cacheKey)) {
-      return groupItemsCache.get(cacheKey);
+    if (!forceRefresh && skinItemsCache.has(cacheKey)) {
+      return skinItemsCache.get(cacheKey);
     }
 
-    log(`[SkinSwap] Descobrindo itens do grupo "${groupName}"...`);
+    log(`[SkinSwap] Descobrindo itens de skin na cena "${sceneName}" por sufixo...`);
 
     try {
-      // Primeiro, obtém o sceneItemId do grupo na cena principal
-      const groupRes = await call("GetSceneItemId", {
-        sceneName: sceneName,
-        sourceName: groupName
-      });
+      const res = await call("GetSceneItemList", { sceneName });
+      const allItems = res.sceneItems || [];
 
-      if (!groupRes.sceneItemId) {
-        log(`[SkinSwap] Grupo "${groupName}" não encontrado na cena "${sceneName}"`);
-        groupItemsCache.set(cacheKey, []);
-        return [];
+      const skinItems = [];
+
+      for (const item of allItems) {
+        const skin = extractSkinSuffix(item.sourceName);
+        if (skin) {
+          skinItems.push({
+            sceneItemId: item.sceneItemId,
+            sourceName: item.sourceName,
+            skin: skin,
+            sceneItemEnabled: item.sceneItemEnabled
+          });
+        }
       }
 
-      const groupId = groupRes.sceneItemId;
-      log(`[SkinSwap] Grupo "${groupName}" encontrado (id: ${groupId})`);
+      // Agrupa por skin para log
+      const bySkin = {};
+      for (const item of skinItems) {
+        if (!bySkin[item.skin]) bySkin[item.skin] = [];
+        bySkin[item.skin].push(item.sourceName);
+      }
 
-      // Agora lista os itens dentro do grupo usando GetGroupSceneItemList
-      const itemsRes = await call("GetGroupSceneItemList", {
-        sceneName: sceneName,
-        sceneItemId: groupId
-      });
+      log(`[SkinSwap] Descobertos ${skinItems.length} itens de skin:`);
+      for (const [skin, items] of Object.entries(bySkin)) {
+        log(`[SkinSwap]   - ${skin}: ${items.length} itens`);
+      }
 
-      const items = (itemsRes.sceneItems || []).map(item => ({
-        sceneItemId: item.sceneItemId,
-        sourceName: item.sourceName,
-        sceneItemEnabled: item.sceneItemEnabled
-      }));
-
-      log(`[SkinSwap] Grupo "${groupName}" contém ${items.length} itens:`, items.map(i => i.sourceName));
-      groupItemsCache.set(cacheKey, items);
-      return items;
+      skinItemsCache.set(cacheKey, skinItems);
+      return skinItems;
 
     } catch (err) {
-      log(`[SkinSwap] Erro ao descobrir grupo "${groupName}": ${err.message}`);
-
-      // Fallback: tenta usar o grupo como cena (alguns grupos funcionam assim)
-      try {
-        const sceneItemsRes = await call("GetSceneItemList", { sceneName: groupName });
-        const items = (sceneItemsRes.sceneItems || []).map(item => ({
-          sceneItemId: item.sceneItemId,
-          sourceName: item.sourceName,
-          sceneItemEnabled: item.sceneItemEnabled,
-          useGroupAsScene: true // Flag para saber que devemos usar groupName como sceneName
-        }));
-
-        if (items.length > 0) {
-          log(`[SkinSwap] Fallback: grupo "${groupName}" como cena, ${items.length} itens`);
-          groupItemsCache.set(cacheKey, items);
-          return items;
-        }
-      } catch (e2) {
-        log(`[SkinSwap] Fallback também falhou para "${groupName}"`);
-      }
-
-      groupItemsCache.set(cacheKey, []);
+      log(`[SkinSwap] ERRO ao descobrir itens da cena "${sceneName}": ${err.message}`);
       return [];
     }
   }
 
   /**
-   * Define visibilidade do GRUPO inteiro de skin na cena
-   * @param {string} sceneName - nome da cena
-   * @param {string} groupName - nome do grupo
-   * @param {boolean} enabled - visibilidade
-   * @returns {Promise<boolean>}
+   * Limpa o cache de itens de skin (para forçar redescoberta)
    */
-  async function setSkinGroupEnabled(sceneName, groupName, enabled) {
-    try {
-      const groupId = await tryGetSceneItemId(sceneName, groupName);
-      if (!groupId) {
-        log(`[SkinSwap] Grupo "${groupName}" não encontrado para ${enabled ? 'mostrar' : 'ocultar'}`);
-        return false;
-      }
-
-      await call("SetSceneItemEnabled", {
-        sceneName: sceneName,
-        sceneItemId: groupId,
-        sceneItemEnabled: enabled
-      });
-
-      log(`[SkinSwap] Grupo "${groupName}" ${enabled ? 'VISÍVEL' : 'OCULTO'}`);
-      return true;
-    } catch (err) {
-      log(`[SkinSwap] Erro ao ${enabled ? 'mostrar' : 'ocultar'} grupo "${groupName}": ${err.message}`);
-      return false;
-    }
+  function clearSkinItemsCache() {
+    skinItemsCache.clear();
+    log("[SkinSwap] Cache de itens de skin limpo");
   }
 
   /**
-   * Define visibilidade de um item específico dentro de um grupo
-   * @param {string} sceneName - nome da cena principal
-   * @param {string} groupName - nome do grupo
-   * @param {number} sceneItemId - ID do item no grupo
+   * Define visibilidade de um item específico na cena
+   * @param {string} sceneName - nome da cena
+   * @param {number} sceneItemId - ID do item
    * @param {boolean} enabled - visibilidade
-   * @param {boolean} useGroupAsScene - se deve usar groupName como sceneName
-   * @returns {Promise<boolean>}
+   * @returns {Promise<boolean>} sucesso
    */
-  async function setGroupItemEnabled(sceneName, groupName, sceneItemId, enabled, useGroupAsScene = false) {
+  async function setSceneItemVisible(sceneName, sceneItemId, enabled) {
     try {
-      // Se useGroupAsScene, usamos o groupName como sceneName (grupos nested)
-      const targetScene = useGroupAsScene ? groupName : sceneName;
-
       await call("SetSceneItemEnabled", {
-        sceneName: targetScene,
+        sceneName: sceneName,
         sceneItemId: sceneItemId,
         sceneItemEnabled: enabled
       });
       return true;
     } catch (err) {
-      // Tenta alternativa: usar grupo como cena
-      if (!useGroupAsScene) {
-        try {
-          await call("SetSceneItemEnabled", {
-            sceneName: groupName,
-            sceneItemId: sceneItemId,
-            sceneItemEnabled: enabled
-          });
-          return true;
-        } catch (e2) {
-          // Silently fail
-        }
-      }
       return false;
     }
   }
 
   /**
-   * Tenta obter sceneItemId de um item usando múltiplas estratégias
+   * Tenta obter sceneItemId de um item usando cache
    * @param {string} sceneName - nome da cena
    * @param {string} sourceName - nome do source a buscar
    * @returns {Promise<number|null>} sceneItemId ou null
@@ -1113,170 +1073,122 @@
   }
 
   /**
-   * Oculta todos os itens de uma skin (item por item dentro do grupo)
-   * @param {string} skinKey - chave da skin
+   * NÚCLEO DA TROCA DE SKIN - Opera por sufixo, item por item
+   *
+   * @param {string} newSkin - skin desejada (champions, libertadores, brasileiraocopa, generico)
+   * @returns {Promise<{shown: number, hidden: number, failed: number, missing: string[]}>}
    */
-  async function hideSkinItems(skinKey) {
-    const groupName = getSkinGroupName(skinKey);
-    log(`[SkinSwap] FASE 1: Ocultando skin "${skinKey}" (grupo: ${groupName})...`);
+  async function executeSkinSwapBySuffix(newSkin) {
+    const sceneName = state.currentScene;
+    const normalizedSkin = newSkin.toLowerCase();
 
-    // Primeiro, descobre os itens do grupo
-    const items = await discoverGroupItems(state.currentScene, groupName);
+    log(`[SkinSwap] ========================================`);
+    log(`[SkinSwap] EXECUTANDO TROCA POR SUFIXO`);
+    log(`[SkinSwap] Cena: ${sceneName}`);
+    log(`[SkinSwap] Nova skin: ${normalizedSkin}`);
+    log(`[SkinSwap] ========================================`);
 
-    if (items.length === 0) {
-      log(`[SkinSwap] FASE 1: Nenhum item encontrado no grupo "${groupName}", tentando ocultar grupo inteiro...`);
-      // Fallback: oculta o grupo inteiro
-      await setSkinGroupEnabled(state.currentScene, groupName, false);
-      return { success: 0, failed: 0, groupFallback: true };
+    // 1) Descobrir todos os itens de skin na cena
+    const allSkinItems = await discoverSkinItemsBySuffix(sceneName, true);
+
+    if (allSkinItems.length === 0) {
+      log(`[SkinSwap] AVISO: Nenhum item de skin encontrado na cena!`);
+      log(`[SkinSwap] Verifique se os itens no OBS terminam com _champions.png, _generico.png, etc.`);
+      return { shown: 0, hidden: 0, failed: 0, missing: [] };
     }
 
-    let success = 0;
+    let shown = 0;
+    let hidden = 0;
     let failed = 0;
+    const missing = [];
 
-    // Oculta cada item individualmente
-    for (const item of items) {
-      const result = await setGroupItemEnabled(
-        state.currentScene,
-        groupName,
-        item.sceneItemId,
-        false,
-        item.useGroupAsScene
-      );
+    // 2) Para cada item, decide se mostra ou oculta baseado no sufixo
+    for (const item of allSkinItems) {
+      const shouldBeVisible = (item.skin === normalizedSkin);
+      const action = shouldBeVisible ? "MOSTRAR" : "OCULTAR";
 
-      if (result) {
-        success++;
-        log(`[SkinSwap]   - "${item.sourceName}" OCULTO`);
+      const success = await setSceneItemVisible(sceneName, item.sceneItemId, shouldBeVisible);
+
+      if (success) {
+        if (shouldBeVisible) {
+          shown++;
+          log(`[SkinSwap]   ✓ "${item.sourceName}" VISÍVEL`);
+        } else {
+          hidden++;
+          // Log apenas se era visível antes (para não poluir)
+          if (item.sceneItemEnabled) {
+            log(`[SkinSwap]   ✓ "${item.sourceName}" OCULTO`);
+          }
+        }
       } else {
         failed++;
-        log(`[SkinSwap]   - "${item.sourceName}" FALHOU ao ocultar`);
+        missing.push(item.sourceName);
+        log(`[SkinSwap]   ✗ "${item.sourceName}" FALHOU ao ${action}`);
       }
 
+      // Pequeno delay para não sobrecarregar o OBS
       if (SKIN_SWAP_ITEM_DELAY_MS > 0) {
         await new Promise(r => setTimeout(r, SKIN_SWAP_ITEM_DELAY_MS));
       }
     }
 
-    log(`[SkinSwap] FASE 1 completa: ${success} ocultos, ${failed} falharam`);
-    return { success, failed };
-  }
-
-  /**
-   * Mostra todos os itens de uma skin (item por item dentro do grupo)
-   * @param {string} skinKey - chave da skin
-   */
-  async function showSkinItems(skinKey) {
-    const groupName = getSkinGroupName(skinKey);
-    log(`[SkinSwap] FASE 5: Mostrando skin "${skinKey}" (grupo: ${groupName})...`);
-
-    // Primeiro, garante que o grupo está visível na cena
-    await setSkinGroupEnabled(state.currentScene, groupName, true);
-
-    // Descobre os itens do grupo
-    const items = await discoverGroupItems(state.currentScene, groupName);
-
-    if (items.length === 0) {
-      log(`[SkinSwap] FASE 5: Nenhum item encontrado no grupo "${groupName}", grupo já visível.`);
-      return { success: 0, failed: 0, groupFallback: true };
+    log(`[SkinSwap] ----------------------------------------`);
+    log(`[SkinSwap] RESULTADO:`);
+    log(`[SkinSwap]   Itens visíveis (${normalizedSkin}): ${shown}`);
+    log(`[SkinSwap]   Itens ocultos (outras skins): ${hidden}`);
+    log(`[SkinSwap]   Falhas: ${failed}`);
+    if (missing.length > 0) {
+      log(`[SkinSwap]   Itens com problema: ${missing.join(", ")}`);
     }
+    log(`[SkinSwap] ========================================`);
 
-    let success = 0;
-    let failed = 0;
-
-    // Mostra cada item individualmente
-    for (const item of items) {
-      const result = await setGroupItemEnabled(
-        state.currentScene,
-        groupName,
-        item.sceneItemId,
-        true,
-        item.useGroupAsScene
-      );
-
-      if (result) {
-        success++;
-        log(`[SkinSwap]   - "${item.sourceName}" VISÍVEL`);
-      } else {
-        failed++;
-        log(`[SkinSwap]   - "${item.sourceName}" FALHOU ao mostrar`);
-      }
-
-      if (SKIN_SWAP_ITEM_DELAY_MS > 0) {
-        await new Promise(r => setTimeout(r, SKIN_SWAP_ITEM_DELAY_MS));
-      }
-    }
-
-    log(`[SkinSwap] FASE 5 completa: ${success} mostrados, ${failed} falharam`);
-    return { success, failed };
+    return { shown, hidden, failed, missing };
   }
 
   /**
    * Oculta itens do grupo SKIN Assets (escudos, logo, etc.)
+   * Mantido para compatibilidade - pode ser usado para assets compartilhados
    */
   async function hideSkinAssets() {
-    log("[SkinSwap] FASE 2: Ocultando SKIN Assets...");
+    log("[SkinSwap] Ocultando SKIN Assets (se existirem)...");
     const assetsGroup = CFG.skinAssetsGroup || "SKIN Assets";
-    const assetsItems = CFG.skinAssetsItems || [];
-    let done = 0;
 
-    // Primeiro tenta ocultar o grupo inteiro
-    const groupHidden = await setSkinGroupEnabled(state.currentScene, assetsGroup, false);
-    if (groupHidden) {
-      log(`[SkinSwap] FASE 2: Grupo "${assetsGroup}" oculto diretamente`);
-      return;
-    }
-
-    // Fallback: oculta itens individualmente
-    for (const itemName of assetsItems) {
+    // Tenta ocultar o grupo se existir
+    const groupId = await tryGetSceneItemId(state.currentScene, assetsGroup);
+    if (groupId) {
       try {
-        const sceneItemId = await tryGetSceneItemId(state.currentScene, itemName);
-        if (sceneItemId) {
-          await call("SetSceneItemEnabled", {
-            sceneName: state.currentScene,
-            sceneItemId: sceneItemId,
-            sceneItemEnabled: false
-          });
-          done++;
-        }
+        await call("SetSceneItemEnabled", {
+          sceneName: state.currentScene,
+          sceneItemId: groupId,
+          sceneItemEnabled: false
+        });
+        log(`[SkinSwap] Grupo "${assetsGroup}" oculto`);
       } catch (e) {
-        log(`[SkinSwap] SKIN Asset "${itemName}" não encontrado (ignorando)`);
+        log(`[SkinSwap] Grupo "${assetsGroup}" não pôde ser oculto: ${e.message}`);
       }
     }
-    log(`[SkinSwap] FASE 2 completa: ${done} assets ocultos`);
   }
 
   /**
    * Mostra itens do grupo SKIN Assets
    */
   async function showSkinAssets() {
-    log("[SkinSwap] FASE 4: Mostrando SKIN Assets...");
+    log("[SkinSwap] Mostrando SKIN Assets (se existirem)...");
     const assetsGroup = CFG.skinAssetsGroup || "SKIN Assets";
-    const assetsItems = CFG.skinAssetsItems || [];
-    let done = 0;
 
-    // Primeiro tenta mostrar o grupo inteiro
-    const groupShown = await setSkinGroupEnabled(state.currentScene, assetsGroup, true);
-    if (groupShown) {
-      log(`[SkinSwap] FASE 4: Grupo "${assetsGroup}" visível diretamente`);
-      return;
-    }
-
-    // Fallback: mostra itens individualmente
-    for (const itemName of assetsItems) {
+    const groupId = await tryGetSceneItemId(state.currentScene, assetsGroup);
+    if (groupId) {
       try {
-        const sceneItemId = await tryGetSceneItemId(state.currentScene, itemName);
-        if (sceneItemId) {
-          await call("SetSceneItemEnabled", {
-            sceneName: state.currentScene,
-            sceneItemId: sceneItemId,
-            sceneItemEnabled: true
-          });
-          done++;
-        }
+        await call("SetSceneItemEnabled", {
+          sceneName: state.currentScene,
+          sceneItemId: groupId,
+          sceneItemEnabled: true
+        });
+        log(`[SkinSwap] Grupo "${assetsGroup}" visível`);
       } catch (e) {
-        log(`[SkinSwap] SKIN Asset "${itemName}" não encontrado (ignorando)`);
+        log(`[SkinSwap] Grupo "${assetsGroup}" não pôde ser mostrado: ${e.message}`);
       }
     }
-    log(`[SkinSwap] FASE 4 completa: ${done} assets mostrados`);
   }
 
   /**
@@ -1385,52 +1297,51 @@
 
   /**
    * Executa a troca de skin de forma atômica e ordenada
+   * NOVO: Usa sistema de SUFIXOS em vez de grupos
    */
   async function executeSkinSwap(oldSkin, newSkin) {
     log(`[SkinSwap] ========================================`);
     log(`[SkinSwap] INICIANDO TROCA: ${oldSkin} -> ${newSkin}`);
     log(`[SkinSwap] Cena atual: ${state.currentScene}`);
+    log(`[SkinSwap] Método: SUFIXO (item por item)`);
     log(`[SkinSwap] ========================================`);
 
     const startTime = Date.now();
 
     try {
-      // FASE 1: Ocultar itens da skin antiga (item por item)
-      if (oldSkin && oldSkin !== newSkin) {
-        await hideSkinItems(oldSkin);
-      }
+      // FASE 1: Executar troca de skin por sufixo (núcleo)
+      // Esta função oculta itens de outras skins e mostra itens da nova skin
+      log("[SkinSwap] FASE 1: Trocando visibilidade dos PNGs por sufixo...");
+      const result = await executeSkinSwapBySuffix(newSkin);
+      log(`[SkinSwap] FASE 1 completa: ${result.shown} visíveis, ${result.hidden} ocultos, ${result.failed} falhas`);
 
-      // FASE 2: Ocultar SKIN Assets para transição limpa
-      await hideSkinAssets();
-
-      // FASE 3: Atualizar fontes para nova skin
-      await updateSkinFonts(newSkin);
-
-      // FASE 4: Mostrar SKIN Assets
+      // FASE 2: Atualizar SKIN Assets (grupo compartilhado, se existir)
+      log("[SkinSwap] FASE 2: Atualizando SKIN Assets...");
       await showSkinAssets();
 
-      // FASE 5: Mostrar itens da nova skin (item por item)
-      await showSkinItems(newSkin);
+      // FASE 3: Atualizar fontes para nova skin
+      log("[SkinSwap] FASE 3: Atualizando fontes...");
+      await updateSkinFonts(newSkin);
 
-      // FASE 6: Re-sincronizar todos os dados
-      log("[SkinSwap] FASE 6: Re-sincronizando dados do jogo...");
+      // FASE 4: Re-sincronizar todos os dados do jogo
+      log("[SkinSwap] FASE 4: Re-sincronizando dados do jogo...");
       await syncAllAfterSkinSwap();
-      log("[SkinSwap] FASE 6 completa: dados sincronizados");
 
       const elapsed = Date.now() - startTime;
       log(`[SkinSwap] ========================================`);
       log(`[SkinSwap] TROCA COMPLETA em ${elapsed}ms`);
       log(`[SkinSwap] Skin ativa: ${newSkin}`);
+      log(`[SkinSwap] Itens afetados: ${result.shown + result.hidden}`);
       log(`[SkinSwap] ========================================`);
 
     } catch (err) {
       log(`[SkinSwap] ERRO DURANTE TROCA: ${err.message}`);
       console.error("[SkinSwap] Stack:", err.stack);
 
-      // Recuperação: tenta pelo menos mostrar a nova skin
+      // Recuperação: tenta pelo menos executar a troca básica
       try {
         log("[SkinSwap] Tentando recuperação...");
-        await showSkinItems(newSkin);
+        await executeSkinSwapBySuffix(newSkin);
         await showSkinAssets();
         log("[SkinSwap] Recuperação parcial concluída");
       } catch (e) {
@@ -1462,14 +1373,6 @@
     }
 
     log("[SkinSwap] Resync completo: placar, times, timer, agregado, jogadores" + (state.penalties.active ? ", pênaltis" : ""));
-  }
-
-  /**
-   * Limpa cache de itens de grupos (para forçar redescoberta)
-   */
-  function clearGroupItemsCache() {
-    groupItemsCache.clear();
-    log("[SkinSwap] Cache de grupos limpo");
   }
 
   async function syncSkinTextStyles() {
