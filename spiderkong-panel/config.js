@@ -40,45 +40,33 @@ window.CONFIG = {
   },
 
   // ===========================================
-  // SKIN SWAP - Inventario de Itens Visuais por Skin
+  // SKIN SWAP - Sistema de Troca de Skin Item-por-Item
   // ===========================================
-  // Os nomes EXATOS dos itens .png dentro de cada grupo de skin no OBS
-  // O sistema controla visibilidade INDIVIDUAL de cada item, NUNCA do grupo
+  //
+  // COMO FUNCIONA:
+  // 1. O sistema usa GetGroupSceneItemList para descobrir automaticamente
+  //    todos os itens dentro de cada grupo de skin no OBS
+  // 2. Cada item e controlado individualmente (SetSceneItemEnabled)
+  // 3. O grupo em si tambem e controlado para garantir visibilidade
+  //
+  // REQUISITOS NO OBS:
+  // - Criar um GRUPO para cada skin com o nome exato definido em skinGroups
+  // - Colocar todos os PNGs da skin DENTRO do grupo correspondente
+  // - Os nomes dos itens dentro do grupo nao precisam seguir padrao especifico
+  //   pois o sistema descobre automaticamente via GetGroupSceneItemList
+  //
   skinVisualItems: {
-    // Itens comuns a TODAS as skins (lista base)
-    // Cada skin tera estes itens com o nome da skin como prefixo do grupo
-    commonItems: [
-      "background.png",
-      "placar.png",
-      "cronometro.png",
-      "escalacoes.png",
-      "rectangles.png",
-      "historicos.png",
-      "tecnicos.png",
-      "inform.png",
-      "webcam.png",
-      "chat_place.png",
-      "qrcodes_place.png",
-      "penalti_place.png",
-      // Marcadores de penalti 1-5 por lado
-      "penalti_esq_1.png",
-      "penalti_esq_2.png",
-      "penalti_esq_3.png",
-      "penalti_esq_4.png",
-      "penalti_esq_5.png",
-      "penalti_dir_1.png",
-      "penalti_dir_2.png",
-      "penalti_dir_3.png",
-      "penalti_dir_4.png",
-      "penalti_dir_5.png"
-    ],
-    // Nomes dos grupos de skin no OBS (case-sensitive)
+    // Nomes EXATOS dos grupos de skin no OBS (case-sensitive!)
+    // O sistema vai descobrir automaticamente os itens dentro de cada grupo
     skinGroups: {
       generico: "Generico",
       champions: "Champions",
       libertadores: "Libertadores",
       brasileiraocopa: "BrasileiraoCopa"
-    }
+    },
+    // commonItems NAO e mais usado - o sistema descobre automaticamente
+    // Mantido aqui apenas para referencia/compatibilidade
+    commonItems: []
   },
 
   // ===========================================
