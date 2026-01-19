@@ -313,7 +313,12 @@
     inputSettingsCache: new Map(),
     textAnchors: new Map(),
     textMetrics: new Map(),
-    managedTextItems: new Set()
+    managedTextItems: new Set(),
+
+    // Skin swap state
+    skinSwapBusy: false,
+    skinSwapPending: null,
+    skinSwapDebounceTimer: null
   };
  
   // ===========================================
@@ -895,8 +900,361 @@
   }
  
   // ===========================================
-  // SKIN MANAGEMENT
+  // SKIN MANAGEMENT - Sistema Robusto de Troca de Skin
   // ===========================================
+
+  // Constantes de configuração para troca de skin
+  const SKIN_SWAP_DEBOUNCE_MS = 300;
+  const SKIN_SWAP_ITEM_DELAY_MS = 50; // Delay entre itens para transição suave
+
+  /**
+   * Verifica se o sistema está pronto para troca de skin
+   * @returns {boolean} true se pode executar troca
+   */
+  function canExecuteSkinSwap() {
+    if (!state.connected) {
+      log("[SkinSwap] ABORTADO: WebSocket não está conectado (state.connected=false)");
+      return false;
+    }
+    if (!state.ws) {
+      log("[SkinSwap] ABORTADO: WebSocket é null");
+      return false;
+    }
+    if (!state.currentScene) {
+      log("[SkinSwap] ABORTADO: Cena atual não está definida");
+      return false;
+    }
+    const targetScene = CFG.defaultScene || "Match Center";
+    if (state.currentScene !== targetScene) {
+      log(`[SkinSwap] AVISO: Cena atual "${state.currentScene}" não é "${targetScene}" - continuando mesmo assim`);
+    }
+    return true;
+  }
+
+  /**
+   * Obtém a lista de itens visuais para uma skin específica
+   * @param {string} skinKey - chave da skin (generico, champions, etc.)
+   * @returns {Array<{groupName: string, itemName: string, fullPath: string}>} lista de itens
+   */
+  function getSkinVisualItems(skinKey) {
+    const visualItems = CFG.skinVisualItems || {};
+    const commonItems = visualItems.commonItems || [];
+    const skinGroups = visualItems.skinGroups || {};
+    const groupName = skinGroups[skinKey] || skinKey;
+
+    return commonItems.map(item => ({
+      groupName: groupName,
+      itemName: item,
+      fullPath: `${groupName}/${item}`
+    }));
+  }
+
+  /**
+   * Tenta obter sceneItemId de um item usando múltiplas estratégias
+   * @param {string} sceneName - nome da cena
+   * @param {string} sourceName - nome do source a buscar
+   * @returns {Promise<number|null>} sceneItemId ou null
+   */
+  async function tryGetSceneItemId(sceneName, sourceName) {
+    const cacheKey = `${sceneName}:${sourceName}`;
+
+    if (state.sceneItemIdCache.has(cacheKey)) {
+      return state.sceneItemIdCache.get(cacheKey);
+    }
+
+    try {
+      const res = await call("GetSceneItemId", { sceneName, sourceName });
+      if (res.sceneItemId) {
+        state.sceneItemIdCache.set(cacheKey, res.sceneItemId);
+        return res.sceneItemId;
+      }
+    } catch (e) {
+      // Não encontrado
+    }
+
+    return null;
+  }
+
+  /**
+   * Define visibilidade de um item de skin
+   * @param {string} sceneName - nome da cena
+   * @param {string} groupName - nome do grupo de skin
+   * @param {string} itemName - nome do item
+   * @param {boolean} enabled - visibilidade desejada
+   * @returns {Promise<boolean>} true se sucesso
+   */
+  async function setSkinItemEnabled(sceneName, groupName, itemName, enabled) {
+    const namesToTry = [
+      itemName,
+      itemName.replace('.png', ''),
+      `${groupName.toLowerCase()}_${itemName.replace('.png', '')}`,
+      `skin_${itemName.replace('.png', '')}`
+    ];
+
+    // Tenta encontrar o item DENTRO do grupo (grupo como cena)
+    try {
+      for (const name of namesToTry) {
+        const sceneItemId = await tryGetSceneItemId(groupName, name);
+        if (sceneItemId) {
+          await call("SetSceneItemEnabled", {
+            sceneName: groupName,
+            sceneItemId: sceneItemId,
+            sceneItemEnabled: enabled
+          });
+          return true;
+        }
+      }
+    } catch (e) {
+      // Grupo pode não ser uma cena válida
+    }
+
+    // Tenta encontrar na cena principal
+    try {
+      for (const name of namesToTry) {
+        const sceneItemId = await tryGetSceneItemId(sceneName, name);
+        if (sceneItemId) {
+          await call("SetSceneItemEnabled", {
+            sceneName: sceneName,
+            sceneItemId: sceneItemId,
+            sceneItemEnabled: enabled
+          });
+          return true;
+        }
+      }
+    } catch (e) {
+      // Não encontrado
+    }
+
+    // Tenta com nome composto grupo/item
+    try {
+      const compositeName = `${groupName}/${itemName}`;
+      const sceneItemId = await tryGetSceneItemId(sceneName, compositeName);
+      if (sceneItemId) {
+        await call("SetSceneItemEnabled", {
+          sceneName: sceneName,
+          sceneItemId: sceneItemId,
+          sceneItemEnabled: enabled
+        });
+        return true;
+      }
+    } catch (e) {
+      // Não encontrado
+    }
+
+    log(`[SkinSwap] Item não encontrado: ${groupName}/${itemName} (falha parcial)`);
+    return false;
+  }
+
+  /**
+   * Oculta todos os itens visuais de uma skin
+   * @param {string} skinKey - chave da skin
+   */
+  async function hideSkinItems(skinKey) {
+    log(`[SkinSwap] FASE 1: Ocultando itens da skin "${skinKey}"...`);
+    const items = getSkinVisualItems(skinKey);
+    let success = 0;
+    let failed = 0;
+
+    for (const item of items) {
+      const result = await setSkinItemEnabled(state.currentScene, item.groupName, item.itemName, false);
+      if (result) success++;
+      else failed++;
+      if (SKIN_SWAP_ITEM_DELAY_MS > 0) {
+        await new Promise(r => setTimeout(r, SKIN_SWAP_ITEM_DELAY_MS));
+      }
+    }
+
+    log(`[SkinSwap] FASE 1 completa: ${success} ocultos, ${failed} falharam`);
+    return { success, failed };
+  }
+
+  /**
+   * Mostra todos os itens visuais de uma skin
+   * @param {string} skinKey - chave da skin
+   */
+  async function showSkinItems(skinKey) {
+    log(`[SkinSwap] FASE 5: Mostrando itens da skin "${skinKey}"...`);
+    const items = getSkinVisualItems(skinKey);
+    let success = 0;
+    let failed = 0;
+
+    for (const item of items) {
+      const result = await setSkinItemEnabled(state.currentScene, item.groupName, item.itemName, true);
+      if (result) success++;
+      else failed++;
+      if (SKIN_SWAP_ITEM_DELAY_MS > 0) {
+        await new Promise(r => setTimeout(r, SKIN_SWAP_ITEM_DELAY_MS));
+      }
+    }
+
+    log(`[SkinSwap] FASE 5 completa: ${success} mostrados, ${failed} falharam`);
+    return { success, failed };
+  }
+
+  /**
+   * Oculta itens do grupo SKIN Assets
+   */
+  async function hideSkinAssets() {
+    log("[SkinSwap] FASE 2: Ocultando SKIN Assets...");
+    const assetsItems = CFG.skinAssetsItems || [];
+    let done = 0;
+
+    for (const itemName of assetsItems) {
+      try {
+        await setSceneItemEnabled(state.currentScene, itemName, false);
+        done++;
+      } catch (e) {
+        log(`[SkinSwap] SKIN Asset "${itemName}" não encontrado (ignorando)`);
+      }
+    }
+    log(`[SkinSwap] FASE 2 completa: ${done} assets ocultos`);
+  }
+
+  /**
+   * Mostra itens do grupo SKIN Assets
+   */
+  async function showSkinAssets() {
+    log("[SkinSwap] FASE 4: Mostrando SKIN Assets...");
+    const assetsItems = CFG.skinAssetsItems || [];
+    let done = 0;
+
+    for (const itemName of assetsItems) {
+      try {
+        await setSceneItemEnabled(state.currentScene, itemName, true);
+        done++;
+      } catch (e) {
+        log(`[SkinSwap] SKIN Asset "${itemName}" não encontrado (ignorando)`);
+      }
+    }
+    log(`[SkinSwap] FASE 4 completa: ${done} assets mostrados`);
+  }
+
+  /**
+   * Atualiza fontes de todos os textos dinâmicos para a nova skin
+   * @param {string} skinKey - chave da nova skin
+   */
+  async function updateSkinFonts(skinKey) {
+    log(`[SkinSwap] FASE 3: Atualizando fontes para skin "${skinKey}"...`);
+
+    const targetFace = getSkinFontFace(skinKey);
+    log(`[SkinSwap] Fonte alvo: ${targetFace}`);
+
+    refreshManagedTextItems();
+
+    let updated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const inputName of state.managedTextItems) {
+      try {
+        let settings;
+        try {
+          settings = await getInputSettingsCached(inputName);
+        } catch (e) {
+          failed++;
+          continue;
+        }
+
+        const font = settings.font;
+        if (!font) {
+          skipped++;
+          continue;
+        }
+
+        if (font.face === targetFace) {
+          skipped++;
+          continue;
+        }
+
+        const resolvedStyle = resolveFontStyle(targetFace, font.style);
+        const nextFont = {
+          face: targetFace,
+          style: resolvedStyle,
+          size: font.size,
+          flags: font.flags
+        };
+
+        await call("SetInputSettings", {
+          inputName,
+          inputSettings: { font: nextFont }
+        });
+
+        state.inputSettingsCache.set(inputName, { ...settings, font: nextFont });
+        updated++;
+      } catch (err) {
+        log(`[SkinSwap] Erro fonte "${inputName}": ${err.message}`);
+        failed++;
+      }
+    }
+
+    log(`[SkinSwap] FASE 3 completa: ${updated} atualizados, ${skipped} pulados, ${failed} falharam`);
+  }
+
+  /**
+   * Executa a troca de skin de forma atômica e ordenada
+   */
+  async function executeSkinSwap(oldSkin, newSkin) {
+    log(`[SkinSwap] ========================================`);
+    log(`[SkinSwap] INICIANDO TROCA: ${oldSkin} -> ${newSkin}`);
+    log(`[SkinSwap] ========================================`);
+
+    const startTime = Date.now();
+
+    try {
+      // FASE 1: Ocultar itens da skin antiga
+      if (oldSkin && oldSkin !== newSkin) {
+        await hideSkinItems(oldSkin);
+      }
+
+      // FASE 2: Ocultar SKIN Assets
+      await hideSkinAssets();
+
+      // FASE 3: Atualizar fontes para nova skin
+      await updateSkinFonts(newSkin);
+
+      // FASE 4: Mostrar SKIN Assets
+      await showSkinAssets();
+
+      // FASE 5: Mostrar itens da nova skin
+      await showSkinItems(newSkin);
+
+      // FASE 6: Re-sincronizar dados
+      log("[SkinSwap] FASE 6: Re-sincronizando dados...");
+      await syncAllAfterSkinSwap();
+      log("[SkinSwap] FASE 6 completa");
+
+      const elapsed = Date.now() - startTime;
+      log(`[SkinSwap] ========================================`);
+      log(`[SkinSwap] TROCA COMPLETA em ${elapsed}ms`);
+      log(`[SkinSwap] ========================================`);
+
+    } catch (err) {
+      log(`[SkinSwap] ERRO DURANTE TROCA: ${err.message}`);
+      try {
+        await showSkinItems(newSkin);
+      } catch (e) {
+        log(`[SkinSwap] Falha na recuperação: ${e.message}`);
+      }
+    }
+  }
+
+  /**
+   * Re-sincroniza todos os dados após troca de skin
+   */
+  async function syncAllAfterSkinSwap() {
+    await Promise.all([
+      syncScore(),
+      syncTeams(),
+      syncTimer(),
+      syncAggregate(),
+      syncPlayers()
+    ]);
+
+    if (state.penalties.active) {
+      await syncPenalties();
+    }
+  }
+
   async function syncSkinTextStyles() {
     if (!state.connected || !state.currentScene) return;
  
@@ -914,31 +1272,84 @@
     }
   }
  
+  /**
+   * Aplica uma nova skin com todas as verificações e proteções
+   * @param {string} newSkin - nome da nova skin
+   * @param {boolean} animate - se deve animar a transição
+   */
   async function applySkin(newSkin, animate = true) {
+    // Verifica se pode executar
+    if (!canExecuteSkinSwap()) {
+      log(`[SkinSwap] Troca cancelada - sistema não está pronto`);
+      return;
+    }
+
     const oldSkin = state.currentSkin;
+
+    // Se é a mesma skin, apenas sincroniza
+    if (oldSkin === newSkin) {
+      log(`[SkinSwap] Skin "${newSkin}" já está ativa, apenas sincronizando...`);
+      await syncAll();
+      return;
+    }
+
+    // Busy lock - se já está executando, agenda para depois
+    if (state.skinSwapBusy) {
+      log(`[SkinSwap] Busy - agendando troca para "${newSkin}"`);
+      state.skinSwapPending = newSkin;
+      return;
+    }
+
+    // Marca como ocupado
+    state.skinSwapBusy = true;
     state.currentSkin = newSkin;
- 
-    log(`Applying skin: ${oldSkin} -> ${newSkin}`);
- 
-    refreshManagedTextItems();
- 
-    // Re-sync everything with new skin
-    await syncAll();
- 
-    saveState();
-    log(`Skin applied: ${newSkin}`);
-  }
- 
-  async function changeSkin(newSkin) {
-    if (newSkin === state.currentSkin) return;
- 
-    await applySkin(newSkin, true);
- 
-    if (el.skinSelect) {
-      el.skinSelect.value = newSkin;
+
+    try {
+      // Executa a troca
+      await executeSkinSwap(oldSkin, newSkin);
+
+      // Atualiza UI
+      if (el.skinSelect) {
+        el.skinSelect.value = newSkin;
+      }
+
+      // Persiste
+      saveState();
+
+    } finally {
+      // Libera o lock
+      state.skinSwapBusy = false;
+
+      // Verifica se há troca pendente
+      if (state.skinSwapPending) {
+        const pending = state.skinSwapPending;
+        state.skinSwapPending = null;
+        log(`[SkinSwap] Executando troca pendente para "${pending}"`);
+        await applySkin(pending, animate);
+      }
     }
   }
- 
+
+  /**
+   * Troca a skin com debounce para evitar chamadas muito rápidas
+   * @param {string} newSkin - nome da nova skin
+   */
+  async function changeSkin(newSkin) {
+    if (newSkin === state.currentSkin && !state.skinSwapBusy) {
+      log(`[SkinSwap] Skin "${newSkin}" já está ativa`);
+      return;
+    }
+
+    // Debounce - cancela timer anterior e agenda novo
+    clearTimeout(state.skinSwapDebounceTimer);
+
+    state.skinSwapDebounceTimer = setTimeout(async () => {
+      await applySkin(newSkin, true);
+    }, SKIN_SWAP_DEBOUNCE_MS);
+
+    log(`[SkinSwap] Troca para "${newSkin}" agendada (debounce ${SKIN_SWAP_DEBOUNCE_MS}ms)`);
+  }
+
   // ===========================================
   // SYNC OPERATIONS
   // ===========================================
