@@ -978,11 +978,62 @@
   }
 
   /**
+   * Faz flatten recursivo de todos os itens de uma cena/grupo
+   * Quando encontra um grupo, expande seus filhos recursivamente
+   * @param {string} sceneName - nome da cena ou grupo
+   * @param {number} depth - profundidade atual da recursão (para logging)
+   * @returns {Promise<Array<{sceneItemId: number, sourceName: string, sceneItemEnabled: boolean, parentScene: string}>>}
+   */
+  async function flattenSceneItems(sceneName, depth = 0) {
+    const indent = "  ".repeat(depth);
+    const allItems = [];
+
+    try {
+      const res = await call("GetSceneItemList", { sceneName });
+      const sceneItems = res.sceneItems || [];
+
+      if (depth === 0) {
+        log(`[SkinSwap] ${indent}Cena "${sceneName}": ${sceneItems.length} itens de primeiro nível`);
+      }
+
+      for (const item of sceneItems) {
+        // Verifica se é um grupo (isGroup pode ser true, ou inputKind pode ser "group")
+        const isGroup = item.isGroup === true || item.inputKind === "group";
+
+        if (isGroup) {
+          log(`[SkinSwap] ${indent}📁 Grupo encontrado: "${item.sourceName}" - expandindo...`);
+          // Recursivamente expande o grupo (grupos funcionam como sub-cenas)
+          const groupItems = await flattenSceneItems(item.sourceName, depth + 1);
+          // Adiciona os itens do grupo, marcando sua origem
+          for (const groupItem of groupItems) {
+            allItems.push({
+              ...groupItem,
+              parentGroup: item.sourceName
+            });
+          }
+        } else {
+          // Item normal - adiciona diretamente
+          allItems.push({
+            sceneItemId: item.sceneItemId,
+            sourceName: item.sourceName,
+            sceneItemEnabled: item.sceneItemEnabled,
+            parentScene: sceneName
+          });
+        }
+      }
+    } catch (err) {
+      log(`[SkinSwap] ${indent}ERRO ao expandir "${sceneName}": ${err.message}`);
+    }
+
+    return allItems;
+  }
+
+  /**
    * Descobre TODOS os itens de skin na cena (por sufixo)
-   * Usa GetSceneItemList para listar itens da cena e filtra por sufixo
+   * Usa GetSceneItemList com flatten recursivo para listar itens (inclusive dentro de grupos)
    * @param {string} sceneName - nome da cena
    * @param {boolean} forceRefresh - se deve ignorar cache
-   * @returns {Promise<Array<{sceneItemId: number, sourceName: string, skin: string}>>}
+   * @returns {Promise<Array<{sceneItemId: number, sourceName: string, skin: string, parentScene: string}>>}
    */
   async function discoverSkinItemsBySuffix(sceneName, forceRefresh = false) {
     const cacheKey = sceneName;
@@ -992,13 +1043,17 @@
     }
 
     log(`[SkinSwap] Descobrindo itens de skin na cena "${sceneName}" por sufixo...`);
+    log(`[SkinSwap] Fazendo flatten recursivo (expandindo grupos)...`);
 
     try {
-      const res = await call("GetSceneItemList", { sceneName });
-      const allItems = res.sceneItems || [];
+      // Usa flatten recursivo para pegar itens de dentro de grupos também
+      const allItems = await flattenSceneItems(sceneName);
+
+      log(`[SkinSwap] Total de itens após flatten: ${allItems.length}`);
 
       const skinItems = [];
-      const ignoredItems = []; // Itens que NÃO correspondem ao padrão de skin
+      const ignoredPngs = []; // PNGs que não terminam com sufixo válido
+      const groups = new Set();
 
       for (const item of allItems) {
         const skin = extractSkinSuffix(item.sourceName);
@@ -1007,13 +1062,17 @@
             sceneItemId: item.sceneItemId,
             sourceName: item.sourceName,
             skin: skin,
-            sceneItemEnabled: item.sceneItemEnabled
+            sceneItemEnabled: item.sceneItemEnabled,
+            parentScene: item.parentScene || sceneName,
+            parentGroup: item.parentGroup || null
           });
+          if (item.parentGroup) {
+            groups.add(item.parentGroup);
+          }
         } else {
-          // CORREÇÃO: Log de itens ignorados para debugging
-          // Só loga se parece ser um PNG (para não poluir com grupos, textos, etc.)
+          // Log de PNGs ignorados (para debug)
           if (item.sourceName && item.sourceName.toLowerCase().includes('.png')) {
-            ignoredItems.push(item.sourceName);
+            ignoredPngs.push(item.sourceName);
           }
         }
       }
@@ -1030,14 +1089,34 @@
         log(`[SkinSwap]   - ${skin}: ${items.length} itens`);
       }
 
-      // CORREÇÃO: Aviso claro sobre itens PNG ignorados
-      if (ignoredItems.length > 0) {
-        log(`[SkinSwap] AVISO: ${ignoredItems.length} itens PNG IGNORADOS (não terminam com _<skin>.png):`);
-        for (const name of ignoredItems.slice(0, 10)) { // Limita a 10 para não poluir
-          log(`[SkinSwap]   ⚠ IGNORADO: "${name}" - renomeie para terminar com _champions.png, _generico.png, etc.`);
+      if (groups.size > 0) {
+        log(`[SkinSwap] Itens encontrados em ${groups.size} grupo(s): ${[...groups].join(", ")}`);
+      }
+
+      // Aviso sobre PNGs ignorados
+      if (ignoredPngs.length > 0) {
+        log(`[SkinSwap] AVISO: ${ignoredPngs.length} itens PNG IGNORADOS (não terminam com _<skin>.png):`);
+        for (const name of ignoredPngs.slice(0, 5)) {
+          log(`[SkinSwap]   ⚠ IGNORADO: "${name}"`);
         }
-        if (ignoredItems.length > 10) {
-          log(`[SkinSwap]   ... e mais ${ignoredItems.length - 10} itens ignorados`);
+        if (ignoredPngs.length > 5) {
+          log(`[SkinSwap]   ... e mais ${ignoredPngs.length - 5} itens`);
+        }
+      }
+
+      // Se não encontrou NADA, dá dicas de debug
+      if (skinItems.length === 0) {
+        log(`[SkinSwap] ⚠⚠⚠ NENHUM ITEM DE SKIN ENCONTRADO! ⚠⚠⚠`);
+        log(`[SkinSwap] Possíveis causas:`);
+        log(`[SkinSwap]   1. Os PNGs não terminam com _champions.png, _libertadores.png, etc.`);
+        log(`[SkinSwap]   2. Os PNGs estão em uma cena diferente de "${sceneName}"`);
+        log(`[SkinSwap]   3. Os grupos no OBS não estão sendo expandidos corretamente`);
+        log(`[SkinSwap] Total de itens na cena (após flatten): ${allItems.length}`);
+        if (allItems.length > 0) {
+          log(`[SkinSwap] Primeiros 10 itens encontrados:`);
+          for (const item of allItems.slice(0, 10)) {
+            log(`[SkinSwap]   - "${item.sourceName}" (em ${item.parentScene})`);
+          }
         }
       }
 
@@ -1142,7 +1221,11 @@
       const shouldBeVisible = (item.skin === normalizedSkin);
       const action = shouldBeVisible ? "MOSTRAR" : "OCULTAR";
 
-      const success = await setSceneItemVisible(sceneName, item.sceneItemId, shouldBeVisible);
+      // IMPORTANTE: Usar parentScene (pode ser um grupo) para SetSceneItemEnabled
+      // Se o item está em um grupo, parentScene será o nome do grupo
+      // Se o item está direto na cena, parentScene será o nome da cena
+      const targetScene = item.parentGroup || item.parentScene || sceneName;
+      const success = await setSceneItemVisible(targetScene, item.sceneItemId, shouldBeVisible);
 
       if (success) {
         if (shouldBeVisible) {
@@ -1660,17 +1743,32 @@
    * Format player text for OBS display
    * Home team (esq): "00 NOMEJOGADOR" (number left of name)
    * Away team (dir): "NOMEJOGADOR 00" (name left of number)
+   *
+   * Se o nome estiver vazio, retorna apenas o número (sem espaço extra)
    */
   function formatPlayerText(player, side) {
-    const num = pad2(player.number);
-    const name = (player.name || "").toUpperCase();
+    const num = String(player.number || "").trim();
+    const paddedNum = num.length > 0 ? pad2(parseInt(num, 10) || 0) : "";
+    const name = (player.name || "").trim().toUpperCase();
+
+    // Se nome vazio, retorna só o número
+    if (!name) {
+      return paddedNum;
+    }
+
+    // Se número vazio, retorna só o nome
+    if (!paddedNum) {
+      return name;
+    }
 
     if (side === "home") {
-      // Casa: numero a ESQUERDA do nome
-      return `${num} ${name}`;
+      // Casa (esq_jogador_XX): número à ESQUERDA do nome
+      // Formato: "01 NEYMAR"
+      return `${paddedNum} ${name}`;
     } else {
-      // Visitante: nome a ESQUERDA do numero (espelhado)
-      return `${name} ${num}`;
+      // Visitante (dir_jogador_XX): nome à ESQUERDA do número
+      // Formato: "MESSI 10"
+      return `${name} ${paddedNum}`;
     }
   }
 
