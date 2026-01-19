@@ -619,8 +619,11 @@
   }
  
   function getSourceName(pattern) {
+    // NOTA: Nao substituimos mais <skin> - os nomes no OBS sao literais
+    // Esta funcao agora apenas retorna o pattern como esta
+    // pois os sourcePatterns ja contem os nomes corretos com <skin> literal
     if (!pattern) return "";
-    return pattern.replace(/<skin>/g, state.currentSkin);
+    return pattern;  // Retorna o nome literal, sem substituicao
   }
  
   function getSkinFontFace(skin) {
@@ -685,20 +688,24 @@
     return 0;
   }
  
-  function buildSkinTextItemNames(skin) {
-    const items = BASE_SKIN_TEXT_ITEMS.map((item) => item.replace("<skin>", skin));
+  function buildSkinTextItemNames() {
+    // IMPORTANTE: NAO substituir <skin> - o nome literal inclui "<skin>"
+    // Os nomes no OBS sao exatamente como definidos em BASE_SKIN_TEXT_ITEMS
+    const items = [...BASE_SKIN_TEXT_ITEMS];
     for (let i = 1; i <= 11; i++) {
       const slot = pad2(i);
-      items.push(`esq_jogador_${slot}_${skin}`);
-      items.push(`dir_jogador_${slot}_${skin}`);
-      items.push(`esq_moregoalball_text_${slot}_${skin}`);
-      items.push(`dir_moregoalball_text_${slot}_${skin}`);
+      // Nomes literais com <skin> - NAO substituir!
+      items.push(`esq_jogador_${slot}_<skin>`);
+      items.push(`dir_jogador_${slot}_<skin>`);
+      items.push(`esq_moregoalball_text_${slot}_<skin>`);
+      items.push(`dir_moregoalball_text_${slot}_<skin>`);
     }
     return items;
   }
  
-  function refreshManagedTextItems(skin) {
-    state.managedTextItems = new Set(buildSkinTextItemNames(skin));
+  function refreshManagedTextItems() {
+    // Sem parametro - nomes sao literais com <skin>
+    state.managedTextItems = new Set(buildSkinTextItemNames());
   }
  
   async function getSceneItemId(sceneName, itemName) {
@@ -855,7 +862,7 @@
         await updateTextAlignment(inputName, String(text));
       }
     } catch (err) {
-      // Silent fail for non-existent inputs
+      log(`[setInputText] Failed for "${inputName}": ${err.message}`);
     }
   }
  
@@ -868,7 +875,7 @@
         inputSettings: { file }
       });
     } catch (err) {
-      // Silent fail
+      log(`[setInputFile] Failed for "${inputName}": ${err.message}`);
     }
   }
  
@@ -883,7 +890,7 @@
         sceneItemEnabled: enabled
       });
     } catch (err) {
-      // Silent fail
+      log(`[setSceneItemEnabled] Failed for "${itemName}": ${err.message}`);
     }
   }
  
@@ -893,7 +900,7 @@
   async function syncSkinTextStyles() {
     if (!state.connected || !state.currentScene) return;
  
-    refreshManagedTextItems(state.currentSkin);
+    refreshManagedTextItems();
     const targetFace = getSkinFontFace(state.currentSkin);
  
     for (const inputName of state.managedTextItems) {
@@ -902,7 +909,7 @@
         await updateTextFont(inputName, targetFace);
         await updateTextAlignment(inputName);
       } catch (err) {
-        // Ignore missing sources
+        log(`[syncSkinTextStyles] Source "${inputName}" not found or error: ${err.message}`);
       }
     }
   }
@@ -913,7 +920,7 @@
  
     log(`Applying skin: ${oldSkin} -> ${newSkin}`);
  
-    refreshManagedTextItems(newSkin);
+    refreshManagedTextItems();
  
     // Re-sync everything with new skin
     await syncAll();
@@ -1032,26 +1039,18 @@
   }
  
   async function syncPlayers() {
-    const patterns = CFG.sourcePatterns || {};
- 
+    // Usa nomes literais com <skin> conforme dynamicPatterns
     for (const side of ["home", "away"]) {
       const team = state.teams[side];
-      const suffix = side === "home" ? "casa" : "fora";
- 
+      const prefix = side === "home" ? "esq" : "dir";
+
       for (let i = 0; i < team.players.length && i < 11; i++) {
         const player = team.players[i];
-        const slot = i + 1;
- 
-        // Sync player name and number
-        const namePattern = patterns.playerName?.replace("<skin>", state.currentSkin);
-        const numPattern = patterns.playerNumber?.replace("<skin>", state.currentSkin);
- 
-        if (namePattern) {
-          await setInputText(`${namePattern}${suffix}_${slot}`, player.name);
-        }
-        if (numPattern) {
-          await setInputText(`${numPattern}${suffix}_${slot}`, pad2(player.number));
-        }
+        const slot = pad2(i + 1);
+
+        // Nome literal: {side}_jogador_{slot}_<skin>
+        const inputName = `${prefix}_jogador_${slot}_<skin>`;
+        await setInputText(inputName, player.name);
       }
     }
   }
@@ -1060,26 +1059,16 @@
     const team = state.teams[side];
     const player = team.players[playerIndex];
     if (!player) return;
- 
-    const patterns = CFG.sourcePatterns || {};
-    const suffix = side === "home" ? "casa" : "fora";
-    const slot = playerIndex + 1;
- 
-    // Sync name and number
-    const namePattern = patterns.playerName?.replace("<skin>", state.currentSkin);
-    const numPattern = patterns.playerNumber?.replace("<skin>", state.currentSkin);
- 
-    if (namePattern) {
-      await setInputText(`${namePattern}${suffix}_${slot}`, player.name);
-    }
-    if (numPattern) {
-      await setInputText(`${numPattern}${suffix}_${slot}`, pad2(player.number));
-    }
- 
-    // Sync goal indicator
-    // Sync card indicator
-    // Sync sub indicator
-    // These would be implemented based on OBS source structure
+
+    const prefix = side === "home" ? "esq" : "dir";
+    const slot = pad2(playerIndex + 1);
+
+    // Nome literal: {side}_jogador_{slot}_<skin>
+    const inputName = `${prefix}_jogador_${slot}_<skin>`;
+    await setInputText(inputName, player.name);
+
+    // TODO: Sync goal indicator, card indicator, sub indicator
+    // Usa CFG.dynamicPatterns para gerar nomes dos icones
   }
  
   // ===========================================
