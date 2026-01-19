@@ -939,14 +939,28 @@
       log("[SkinSwap] ABORTADO: WebSocket é null");
       return false;
     }
-    if (!state.currentScene) {
-      log("[SkinSwap] ABORTADO: Cena atual não está definida");
+
+    // CORREÇÃO: Validação robusta - garantir que as cenas foram carregadas
+    if (!state.availableScenes || state.availableScenes.length === 0) {
+      log("[SkinSwap] ABORTADO: Lista de cenas ainda não foi carregada do OBS");
+      log("[SkinSwap] Aguarde a conexão ser estabelecida completamente");
       return false;
     }
+
+    // CORREÇÃO: Verificar se a cena alvo (defaultScene) existe
     const targetScene = CFG.defaultScene || "Match Center";
-    if (state.currentScene !== targetScene) {
-      log(`[SkinSwap] AVISO: Cena atual "${state.currentScene}" não é "${targetScene}" - continuando mesmo assim`);
+    if (!state.availableScenes.includes(targetScene)) {
+      log(`[SkinSwap] ABORTADO: Cena alvo "${targetScene}" NÃO EXISTE no OBS`);
+      log(`[SkinSwap] Cenas disponíveis: ${state.availableScenes.join(", ")}`);
+      log(`[SkinSwap] Corrija CONFIG.defaultScene ou crie a cena no OBS`);
+      return false;
     }
+
+    // Log informativo sobre a cena ativa vs cena alvo
+    if (state.currentScene !== targetScene) {
+      log(`[SkinSwap] INFO: Cena ativa no OBS é "${state.currentScene}", mas operando na cena "${targetScene}" (onde os PNGs estão)`);
+    }
+
     return true;
   }
 
@@ -984,6 +998,7 @@
       const allItems = res.sceneItems || [];
 
       const skinItems = [];
+      const ignoredItems = []; // Itens que NÃO correspondem ao padrão de skin
 
       for (const item of allItems) {
         const skin = extractSkinSuffix(item.sourceName);
@@ -994,6 +1009,12 @@
             skin: skin,
             sceneItemEnabled: item.sceneItemEnabled
           });
+        } else {
+          // CORREÇÃO: Log de itens ignorados para debugging
+          // Só loga se parece ser um PNG (para não poluir com grupos, textos, etc.)
+          if (item.sourceName && item.sourceName.toLowerCase().includes('.png')) {
+            ignoredItems.push(item.sourceName);
+          }
         }
       }
 
@@ -1007,6 +1028,17 @@
       log(`[SkinSwap] Descobertos ${skinItems.length} itens de skin:`);
       for (const [skin, items] of Object.entries(bySkin)) {
         log(`[SkinSwap]   - ${skin}: ${items.length} itens`);
+      }
+
+      // CORREÇÃO: Aviso claro sobre itens PNG ignorados
+      if (ignoredItems.length > 0) {
+        log(`[SkinSwap] AVISO: ${ignoredItems.length} itens PNG IGNORADOS (não terminam com _<skin>.png):`);
+        for (const name of ignoredItems.slice(0, 10)) { // Limita a 10 para não poluir
+          log(`[SkinSwap]   ⚠ IGNORADO: "${name}" - renomeie para terminar com _champions.png, _generico.png, etc.`);
+        }
+        if (ignoredItems.length > 10) {
+          log(`[SkinSwap]   ... e mais ${ignoredItems.length - 10} itens ignorados`);
+        }
       }
 
       skinItemsCache.set(cacheKey, skinItems);
@@ -1079,12 +1111,15 @@
    * @returns {Promise<{shown: number, hidden: number, failed: number, missing: string[]}>}
    */
   async function executeSkinSwapBySuffix(newSkin) {
-    const sceneName = state.currentScene;
+    // CORREÇÃO: Usar SEMPRE a cena padrão (Match Center) onde os PNGs estão,
+    // independentemente da cena ativa no Programa do OBS
+    const sceneName = CFG.defaultScene || "Match Center";
     const normalizedSkin = newSkin.toLowerCase();
 
     log(`[SkinSwap] ========================================`);
     log(`[SkinSwap] EXECUTANDO TROCA POR SUFIXO`);
-    log(`[SkinSwap] Cena: ${sceneName}`);
+    log(`[SkinSwap] Cena ALVO (defaultScene): ${sceneName}`);
+    log(`[SkinSwap] Cena ATIVA no OBS: ${state.currentScene}`);
     log(`[SkinSwap] Nova skin: ${normalizedSkin}`);
     log(`[SkinSwap] ========================================`);
 
@@ -1150,15 +1185,17 @@
    * Mantido para compatibilidade - pode ser usado para assets compartilhados
    */
   async function hideSkinAssets() {
+    // CORREÇÃO: Usar sempre a cena padrão onde os assets estão
+    const sceneName = CFG.defaultScene || "Match Center";
     log("[SkinSwap] Ocultando SKIN Assets (se existirem)...");
     const assetsGroup = CFG.skinAssetsGroup || "SKIN Assets";
 
     // Tenta ocultar o grupo se existir
-    const groupId = await tryGetSceneItemId(state.currentScene, assetsGroup);
+    const groupId = await tryGetSceneItemId(sceneName, assetsGroup);
     if (groupId) {
       try {
         await call("SetSceneItemEnabled", {
-          sceneName: state.currentScene,
+          sceneName: sceneName,
           sceneItemId: groupId,
           sceneItemEnabled: false
         });
@@ -1173,14 +1210,16 @@
    * Mostra itens do grupo SKIN Assets
    */
   async function showSkinAssets() {
+    // CORREÇÃO: Usar sempre a cena padrão onde os assets estão
+    const sceneName = CFG.defaultScene || "Match Center";
     log("[SkinSwap] Mostrando SKIN Assets (se existirem)...");
     const assetsGroup = CFG.skinAssetsGroup || "SKIN Assets";
 
-    const groupId = await tryGetSceneItemId(state.currentScene, assetsGroup);
+    const groupId = await tryGetSceneItemId(sceneName, assetsGroup);
     if (groupId) {
       try {
         await call("SetSceneItemEnabled", {
-          sceneName: state.currentScene,
+          sceneName: sceneName,
           sceneItemId: groupId,
           sceneItemEnabled: true
         });
@@ -1300,9 +1339,11 @@
    * NOVO: Usa sistema de SUFIXOS em vez de grupos
    */
   async function executeSkinSwap(oldSkin, newSkin) {
+    const targetScene = CFG.defaultScene || "Match Center";
     log(`[SkinSwap] ========================================`);
     log(`[SkinSwap] INICIANDO TROCA: ${oldSkin} -> ${newSkin}`);
-    log(`[SkinSwap] Cena atual: ${state.currentScene}`);
+    log(`[SkinSwap] Cena ALVO (onde os PNGs estão): ${targetScene}`);
+    log(`[SkinSwap] Cena ATIVA no OBS: ${state.currentScene}`);
     log(`[SkinSwap] Método: SUFIXO (item por item)`);
     log(`[SkinSwap] ========================================`);
 
