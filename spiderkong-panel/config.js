@@ -2,14 +2,14 @@
  * SpiderKong Panel - Configuration
  * Complete configuration for OBS WebSocket integration
  */
- 
+
 window.CONFIG = {
   // ===========================================
   // WebSocket Connection
   // ===========================================
   wsUrl: "ws://127.0.0.1:4455",
   password: "",
- 
+
   // ===========================================
   // Reconnection Settings
   // ===========================================
@@ -18,70 +18,109 @@ window.CONFIG = {
     delays: [1000, 2000, 5000, 10000, 30000],
     maxAttempts: Infinity
   },
- 
+
   // ===========================================
   // Default Scene
   // ===========================================
   defaultScene: "Match Center",
- 
+
   // ===========================================
   // Skins Configuration
   // ===========================================
   skins: ["generico", "champions", "libertadores", "brasileiraocopa"],
   defaultSkin: "generico",
- 
+
   // Font mapping per skin
+  // REGRA DURA: generico e brasileiraocopa = "NUNITO" (exatamente)
   skinFonts: {
     generico: "NUNITO",
     champions: "CHAMPIONS",
     libertadores: "BRANDING",
     brasileiraocopa: "NUNITO"
   },
- 
+
   // ===========================================
-  // OBS Source Naming Patterns
-  // Use <skin> as placeholder for skin name
+  // OBS Source Names - LITERAL (com <skin> no nome)
+  // IMPORTANTE: Estes sao os nomes EXATOS dos sources no OBS
+  // O texto "<skin>" e parte LITERAL do nome, NAO e substituido
+  // ===========================================
+  textSources: {
+    // Geral
+    aovivo: "aovivo_<skin>",
+
+    // Cronometro
+    cronometroEtapa: "cronometro_etapa_<skin>",
+    cronometroTempo: "cronometro_tempo_<skin>",
+
+    // Placar - Siglas
+    placarSiglaEsq: "placar_siglatime_esq_<skin>",
+    placarSiglaDir: "placar_siglatime_dir_<skin>",
+
+    // Placar - Gols
+    placarGolsEsq: "placar_gols_esq_<skin>",
+    placarGolsDir: "placar_gols_dir_<skin>",
+
+    // Placar - Agregado
+    placarAgregadoEsq: "placar_agregado_esq_<skin>",
+    placarAgregadoDir: "placar_agregado_dir_<skin>",
+
+    // Escalacao - Labels
+    escalacaoEsq: "esq_escalacao_<skin>",
+    escalacaoDir: "dir_escalacao_<skin>",
+    escalacaoTimeEsq: "esq_escalacao_time_<skin>",
+    escalacaoTimeDir: "dir_escalacao_time_<skin>",
+    escalacaoTecnicoEsq: "esq_escalacao_tecnico_<skin>",
+    escalacaoTecnicoDir: "dir_escalacao_tecnico_<skin>",
+
+    // Historico
+    historicoEsq: "esq_historico_<skin>",
+    historicoDir: "dir_historico_<skin>"
+  },
+
+  // ===========================================
+  // Padroes para sources gerados dinamicamente
+  // {side} = esq|dir, {slot} = 01-11
+  // ===========================================
+  dynamicPatterns: {
+    jogador: "{side}_jogador_{slot}_<skin>",
+    moregoalballText: "{side}_moregoalball_text_{slot}_<skin>",
+    goalball: "{side}_goalball_{slot}_<skin>",
+    moregoalball: "{side}_moregoalball_{slot}_<skin>",
+    card: "{side}_card_{slot}_<skin>",
+    swap: "{side}_swap_{slot}_<skin>"
+  },
+
+  // ===========================================
+  // LEGADO: sourcePatterns (corrigidos para nomes literais)
   // ===========================================
   sourcePatterns: {
-    // Scoreboard
-    scoreHome: "<skin>_placar_casa",
-    scoreAway: "<skin>_placar_fora",
-    teamNameHome: "<skin>_nome_casa",
-    teamNameAway: "<skin>_nome_fora",
-    teamSiglaHome: "<skin>_sigla_casa",
-    teamSiglaAway: "<skin>_sigla_fora",
-    teamLogoHome: "<skin>_escudo_casa",
-    teamLogoAway: "<skin>_escudo_fora",
-    coachHome: "<skin>_tecnico_casa",
-    coachAway: "<skin>_tecnico_fora",
- 
+    // Scoreboard - nomes literais com <skin>
+    scoreHome: "placar_gols_esq_<skin>",
+    scoreAway: "placar_gols_dir_<skin>",
+    teamNameHome: "esq_escalacao_time_<skin>",
+    teamNameAway: "dir_escalacao_time_<skin>",
+    teamSiglaHome: "placar_siglatime_esq_<skin>",
+    teamSiglaAway: "placar_siglatime_dir_<skin>",
+    teamLogoHome: "escudo_esq_<skin>",
+    teamLogoAway: "escudo_dir_<skin>",
+    coachHome: "esq_escalacao_tecnico_<skin>",
+    coachAway: "dir_escalacao_tecnico_<skin>",
+
     // Timer
-    timer: "<skin>_cronometro",
-    period: "<skin>_periodo",
- 
+    timer: "cronometro_tempo_<skin>",
+    period: "cronometro_etapa_<skin>",
+
     // Aggregate
-    aggHome: "<skin>_agregado_casa",
-    aggAway: "<skin>_agregado_fora",
-    aggTotalHome: "<skin>_agregado_total_casa",
-    aggTotalAway: "<skin>_agregado_total_fora",
- 
+    aggHome: "placar_agregado_esq_<skin>",
+    aggAway: "placar_agregado_dir_<skin>",
+    aggTotalHome: "placar_agregado_esq_<skin>",
+    aggTotalAway: "placar_agregado_dir_<skin>",
+
     // Penalties Score
-    penScoreHome: "<skin>_penaltis_casa",
-    penScoreAway: "<skin>_penaltis_fora",
- 
-    // Penalty markers (1-5)
-    penMarkerHome: "<skin>_pen_casa_",
-    penMarkerAway: "<skin>_pen_fora_",
- 
-    // Player slots (1-11)
-    playerName: "<skin>_jogador_nome_",
-    playerNumber: "<skin>_jogador_num_",
-    playerGoal: "<skin>_jogador_gol_",
-    playerGoalCount: "<skin>_jogador_gols_",
-    playerCard: "<skin>_jogador_cartao_",
-    playerSub: "<skin>_jogador_sub_"
+    penScoreHome: "penalti_score_esq_<skin>",
+    penScoreAway: "penalti_score_dir_<skin>"
   },
- 
+
   // ===========================================
   // OBS Groups Configuration
   // ===========================================
@@ -92,7 +131,7 @@ window.CONFIG = {
     roster: "Escalacao",
     cards: "Cartoes"
   },
- 
+
   // ===========================================
   // Asset Paths
   // ===========================================
@@ -101,27 +140,27 @@ window.CONFIG = {
     cardYellow: "Assets/Cartoes/amarelo.png",
     cardRed: "Assets/Cartoes/vermelho.png",
     cardYellowRed: "Assets/Cartoes/amarelo_vermelho.png",
- 
+
     // Goal icons
     goalSingle: "Assets/Cartoes/ball.png",
     goalMultiple: "Assets/Cartoes/ball.png",
- 
+
     // Substitution icon
     subIcon: "Assets/Cartoes/swap.png",
- 
+
     // Penalty markers
     penGoal: "Assets/Penaltis/gol.png",
     penMiss: "Assets/Penaltis/fora.png",
     penEmpty: "Assets/Penaltis/vazio.png",
- 
+
     // Teams folder
     teamsFolder: "Assets/Times/",
- 
+
     // Players folder
     playersFolder: "Assets/Players/",
     reservesFolder: "Assets/Reservas/"
   },
- 
+
   // ===========================================
   // Match Center Specific
   // ===========================================
@@ -136,7 +175,7 @@ window.CONFIG = {
     swapSuffix: "__swap",
     swapDelayMs: 160
   },
- 
+
   // ===========================================
   // Timer Configuration
   // ===========================================
@@ -145,7 +184,7 @@ window.CONFIG = {
     maxSeconds: 59,
     syncIntervalMs: 1000
   },
- 
+
   // ===========================================
   // Penalties Configuration
   // ===========================================
@@ -153,14 +192,14 @@ window.CONFIG = {
     shotsPerTeam: 5,
     states: ["empty", "goal", "miss"]
   },
- 
+
   // ===========================================
   // History Configuration
   // ===========================================
   history: {
     maxEvents: 50
   },
- 
+
   // ===========================================
   // Storage Configuration
   // ===========================================
@@ -170,7 +209,7 @@ window.CONFIG = {
     autoSaveDebounceMs: 500,
     maxSizeBytes: 500000
   },
- 
+
   // ===========================================
   // UI Configuration
   // ===========================================

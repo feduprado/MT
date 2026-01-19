@@ -418,16 +418,18 @@
  
       (async () => {
         try {
-          const cacheBuster = Date.now();
-          await loadScript(`./config.js?v=${cacheBuster}`);
-          await loadScript(`./teams.data.js?v=${cacheBuster}`);
-          await loadScript(`./roster.data.js?v=${cacheBuster}`);
-          await loadScript(`./app.js?v=${cacheBuster}`);
+          // Carrega scripts SEM cache-buster para compatibilidade com file:// no CEF do OBS
+          await loadScript("./config.js");
+          await loadScript("./teams.data.js");
+          await loadScript("./roster.data.js");
+          await loadScript("./app.js");
         } catch (error) {
+          console.error("[SpiderKong] Load error:", error);
           document.body.innerHTML = `
             <div style="padding: 20px; background: #1a1a1a; color: #ff5252; font-family: monospace;">
               <h2>Erro ao carregar</h2>
               <pre>${error.message}</pre>
+              <p style="margin-top: 12px; color: #999;">Verifique o console (F12) para mais detalhes.</p>
             </div>
           `;
         }
