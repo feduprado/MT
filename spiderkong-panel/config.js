@@ -40,6 +40,60 @@ window.CONFIG = {
   },
 
   // ===========================================
+  // SKIN SWAP - Inventario de Itens Visuais por Skin
+  // ===========================================
+  // Os nomes EXATOS dos itens .png dentro de cada grupo de skin no OBS
+  // O sistema controla visibilidade INDIVIDUAL de cada item, NUNCA do grupo
+  skinVisualItems: {
+    // Itens comuns a TODAS as skins (lista base)
+    // Cada skin tera estes itens com o nome da skin como prefixo do grupo
+    commonItems: [
+      "background.png",
+      "placar.png",
+      "cronometro.png",
+      "escalacoes.png",
+      "rectangles.png",
+      "historicos.png",
+      "tecnicos.png",
+      "inform.png",
+      "webcam.png",
+      "chat_place.png",
+      "qrcodes_place.png",
+      "penalti_place.png",
+      // Marcadores de penalti 1-5 por lado
+      "penalti_esq_1.png",
+      "penalti_esq_2.png",
+      "penalti_esq_3.png",
+      "penalti_esq_4.png",
+      "penalti_esq_5.png",
+      "penalti_dir_1.png",
+      "penalti_dir_2.png",
+      "penalti_dir_3.png",
+      "penalti_dir_4.png",
+      "penalti_dir_5.png"
+    ],
+    // Nomes dos grupos de skin no OBS (case-sensitive)
+    skinGroups: {
+      generico: "Generico",
+      champions: "Champions",
+      libertadores: "Libertadores",
+      brasileiraocopa: "BrasileiraoCopa"
+    }
+  },
+
+  // ===========================================
+  // SKIN Assets Group - Itens compartilhados que precisam de refresh
+  // ===========================================
+  skinAssetsGroup: "SKIN Assets",
+  skinAssetsItems: [
+    // Escudos dinamicos
+    "escudo_esq",
+    "escudo_dir",
+    // Logo da competicao (se existir)
+    "logo_competicao"
+  ],
+
+  // ===========================================
   // OBS Source Names - LITERAL (com <skin> no nome)
   // IMPORTANTE: Estes sao os nomes EXATOS dos sources no OBS
   // O texto "<skin>" e parte LITERAL do nome, NAO e substituido
